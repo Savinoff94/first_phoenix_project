@@ -3,9 +3,6 @@ defmodule FirstAppWeb.LobbyLive.Index do
   alias FirstAppWeb.LobbiesManager
   alias Phoenix.PubSub
 
-  # -----------------------------
-  # MOUNT
-  # -----------------------------
   def mount(_params, session, socket) do
     if connected?(socket), do: LobbiesManager.subscribe_to_updates()
 
@@ -39,82 +36,10 @@ defmodule FirstAppWeb.LobbyLive.Index do
   # -----------------------------
   # HANDLE EVENTS
   # -----------------------------
-  def handle_event("toggle_create_lobby_modal", _params, socket) do
-    {:noreply, update(socket, :show_create_lobby_modal, &(!&1))}
-  end
-  def handle_event("toggle_check_lobby_password_modal", %{"id" => lobby_id}, socket) do
-    current = socket.assigns.show_check_password_modal
 
-    {show_modal, updated_form_data} =
-      if current do
-        {false, Map.put(socket.assigns.check_password_form_data, :lobbyId, nil)}
-      else
-        {true, Map.put(socket.assigns.check_password_form_data, :lobbyId, lobby_id)}
-      end
+  # LOBBIES
 
-      {:noreply,
-      socket
-      |> assign(:show_check_password_modal, show_modal)
-      |> assign(:check_password_form_data, updated_form_data)}
-  end
-
-  def handle_event("close_check_lobby_password_modal", _params, socket) do
-    {:noreply,
-     socket
-     |> assign(:show_check_password_modal, false)
-     |> assign(:check_password_form_data,
-        Map.put(socket.assigns.check_password_form_data, :lobbyId, nil)
-      )}
-  end
-
-  def handle_event("update_filter", %{"name" => name}, socket) do
-    IO.inspect(name, label: "Name filter updated")
-
-    filters = Map.put(socket.assigns.filters, :name, name)
-    lobbies = LobbiesManager.all()
-    filtered = apply_filters(lobbies, filters)
-
-    {:noreply, assign(socket, filters: filters, lobbies: filtered)}
-  end
-
-  def handle_event("update_filter", %{"order" => value}, socket) do
-    order =
-      case value do
-        "asc" -> :asc
-        "desc" -> :desc
-        _ -> :asc
-      end
-
-    filters = Map.put(socket.assigns.filters, :order, order)
-    lobbies = LobbiesManager.all()
-    filtered = apply_filters(lobbies, filters)
-
-    {:noreply, assign(socket, filters: filters, lobbies: filtered)}
-  end
-
-  def handle_event("update_filter", %{"filter" => filter, "value" => value}, socket) do
-    flag = value in ["true", "on"]
-    atom_key = String.to_existing_atom(filter)
-    filters = Map.put(socket.assigns.filters, atom_key, flag)
-
-    lobbies = LobbiesManager.all()
-    filtered = apply_filters(lobbies, filters)
-
-    {:noreply, assign(socket, filters: filters, lobbies: filtered)}
-  end
-
-  def handle_event("update_filter", %{"filter" => filter}, socket) do
-    atom_key = String.to_existing_atom(filter)
-    filters = Map.put(socket.assigns.filters, atom_key, false)
-
-    lobbies = LobbiesManager.all()
-    filtered = apply_filters(lobbies, filters)
-
-    {:noreply, assign(socket, filters: filters, lobbies: filtered)}
-  end
-
-
-
+  # Create lobby submit form
   def handle_event("create_lobby", %{"lobby" => lobby_params}, socket) do
     attrs = %{
       name: lobby_params["name"],
@@ -132,10 +57,21 @@ defmodule FirstAppWeb.LobbyLive.Index do
      |> assign(:create_lobby_form_data, empty_create_lobby_form())}
   end
 
+  # On Lobby created subscription
   def handle_info({:lobby_created, _lobby}, socket) do
     {:noreply, assign(socket, :lobbies, LobbiesManager.all())}
   end
 
+  # Toggle create lobby modal
+  def handle_event("toggle_create_lobby_modal", _params, socket) do
+    {:noreply, update(socket, :show_create_lobby_modal, &(!&1))}
+  end
+
+
+  # Check Lobby password
+
+
+  # Check lobby password
   def handle_event("check_lobby_password", %{"password" => password}, socket) do
     lobby_id = socket.assigns.check_password_form_data.lobbyId
     user_login = socket.assigns.login
@@ -157,30 +93,90 @@ defmodule FirstAppWeb.LobbyLive.Index do
     end
   end
 
-  # -----------------------------
-  # HELPERS
-  # -----------------------------
-  defp empty_create_lobby_form do
-    %{name: "", password: "", maxPlayers: "", maxSpectators: ""}
+  # Toggle check lobby password modal
+  def handle_event("toggle_check_lobby_password_modal", %{"id" => lobby_id}, socket) do
+    current = socket.assigns.show_check_password_modal
+
+    {show_modal, updated_form_data} =
+      if current do
+        {false, Map.put(socket.assigns.check_password_form_data, :lobbyId, nil)}
+      else
+        {true, Map.put(socket.assigns.check_password_form_data, :lobbyId, lobby_id)}
+      end
+
+      {:noreply,
+      socket
+      |> assign(:show_check_password_modal, show_modal)
+      |> assign(:check_password_form_data, updated_form_data)}
   end
 
-  defp empty_check_password_form do
-    %{password: "", lobbyId: ""}
+  # Close check lobby password modal
+  def handle_event("close_check_lobby_password_modal", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_check_password_modal, false)
+     |> assign(:check_password_form_data,
+        Map.put(socket.assigns.check_password_form_data, :lobbyId, nil)
+      )}
   end
 
-  defp get_filtered_lobbies(socket) do
-    filters = socket.assigns.filters
-    lobbies = FirstAppWeb.LobbiesManager.all()
-    apply_filters(lobbies, filters)
+
+  # Filters
+
+
+  # Filter by name
+  def handle_event("update_filter", %{"name" => name}, socket) do
+    IO.inspect(name, label: "Name filter updated")
+
+    filters = Map.put(socket.assigns.filters, :name, name)
+    lobbies = LobbiesManager.all()
+    filtered = apply_filters(lobbies, filters)
+
+    {:noreply, assign(socket, filters: filters, lobbies: filtered)}
   end
 
-  defp parse_int(""), do: nil
-  defp parse_int(nil), do: nil
-  defp parse_int(str), do: String.to_integer(str)
+  # Order by name
+  def handle_event("update_filter", %{"order" => value}, socket) do
+    order =
+      case value do
+        "asc" -> :asc
+        "desc" -> :desc
+        _ -> :asc
+      end
+
+    filters = Map.put(socket.assigns.filters, :order, order)
+    lobbies = LobbiesManager.all()
+    filtered = apply_filters(lobbies, filters)
+
+    {:noreply, assign(socket, filters: filters, lobbies: filtered)}
+  end
+
+  # Filter by checkbox(password, amount of players and spectators places) CHECKBOX ON
+  def handle_event("update_filter", %{"filter" => filter, "value" => value}, socket) do
+    flag = value in ["true", "on"]
+    atom_key = String.to_existing_atom(filter)
+    filters = Map.put(socket.assigns.filters, atom_key, flag)
+
+    lobbies = LobbiesManager.all()
+    filtered = apply_filters(lobbies, filters)
+
+    {:noreply, assign(socket, filters: filters, lobbies: filtered)}
+  end
+  # Filter by checkbox(password, amount of players and spectators places) CHECKBOX OFF
+  def handle_event("update_filter", %{"filter" => filter}, socket) do
+    atom_key = String.to_existing_atom(filter)
+    filters = Map.put(socket.assigns.filters, atom_key, false)
+
+    lobbies = LobbiesManager.all()
+    filtered = apply_filters(lobbies, filters)
+
+    {:noreply, assign(socket, filters: filters, lobbies: filtered)}
+  end
 
   # -----------------------------
-  # RENDER (UI)
+  # RENDER
   # -----------------------------
+
   def render(assigns) do
     ~H"""
     <div class="p-6">
@@ -254,7 +250,7 @@ defmodule FirstAppWeb.LobbyLive.Index do
           class="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
           phx-click="toggle_create_lobby_modal"
         >
-          ➕ Create Lobby
+          Create Lobby
         </button>
       </div>
 
@@ -351,7 +347,7 @@ defmodule FirstAppWeb.LobbyLive.Index do
       </div>
     <% end %>
 
-    <!-- Modal -->
+    <!-- Check password modal -->
     <%= if @show_check_password_modal do %>
       <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
         <div class="bg-white p-6 rounded-lg w-[400px] shadow-lg">
@@ -383,7 +379,33 @@ defmodule FirstAppWeb.LobbyLive.Index do
     """
   end
 
+  # -----------------------------
+  # HELPERS
+  # -----------------------------
+
+  defp empty_create_lobby_form do
+    %{name: "", password: "", maxPlayers: "", maxSpectators: ""}
+  end
+
+  defp empty_check_password_form do
+    %{password: "", lobbyId: ""}
+  end
+
+
+  defp parse_int(""), do: nil
+  defp parse_int(nil), do: nil
+  defp parse_int(str), do: String.to_integer(str)
+
+
   # Filters
+
+
+  defp get_filtered_lobbies(socket) do
+    filters = socket.assigns.filters
+    lobbies = FirstAppWeb.LobbiesManager.all()
+    apply_filters(lobbies, filters)
+  end
+
   defp filter_by_name(lobbies, ""), do: lobbies
   defp filter_by_name(lobbies, name) do
     Enum.filter(lobbies, fn lobby ->

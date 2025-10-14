@@ -2,36 +2,41 @@ defmodule FirstAppWeb.Players do
   use GenServer
   alias Phoenix.PubSub
   @pubsub_topic "players"
+  # List of all loggedIn players
   @initial_state []
+
+
   #Client API
+
 
   # Start the GenServer
   def start_link(_opts) do
     GenServer.start_link(__MODULE__, @initial_state, name: __MODULE__)
   end
 
+  # get all players
   def all_players do
     GenServer.call(__MODULE__, :all_players)
   end
 
+   # is player in the list
   def player_exists?(login) do
     GenServer.call(__MODULE__, {:player_exists?, login})
   end
 
-  def sorted_by_score do
-    GenServer.call(__MODULE__, :sorted_by_score)
-  end
-
+  # add player to the list
   def add_player(login) do
     GenServer.cast(__MODULE__, {:add_player, login})
     PubSub.broadcast(FirstApp.PubSub, @pubsub_topic, {:player_added, login})
   end
 
+  # increment player score by one
   def update_score(login) do
     GenServer.cast(__MODULE__, {:update_score, login})
     PubSub.broadcast(FirstApp.PubSub, @pubsub_topic, {:score_updated, login})
   end
 
+  # delete player from list
   def delete_player(login) do
     GenServer.cast(__MODULE__, {:delete_player, login})
     PubSub.broadcast(FirstApp.PubSub, @pubsub_topic, {:player_deleted, login})
@@ -42,6 +47,7 @@ defmodule FirstAppWeb.Players do
     PubSub.subscribe(FirstApp.PubSub, @pubsub_topic)
   end
 
+
   # Server callbacks
 
 
@@ -49,11 +55,13 @@ defmodule FirstAppWeb.Players do
     {:ok, @initial_state}
   end
 
+  # get all players
   @impl true
   def handle_call(:all_players, _from, state) do
     {:reply, state, state}
   end
 
+  # is player in the list
   @impl true
   def handle_call({:player_exists?, login}, _from, state) do
     exists? =
@@ -62,18 +70,14 @@ defmodule FirstAppWeb.Players do
     {:reply, exists?, state}
   end
 
-  @impl true
-  def handle_call(:sorted_by_score, _from, state) do
-    sorted = Enum.sort_by(state, & &1.score, :desc)
-    {:reply, sorted, state}
-  end
-
+  # add player to the list
   @impl true
   def handle_cast({:add_player, login}, state) do
     new_player = %{login: login, score: 0}
     {:noreply, [new_player | state]}
   end
 
+  # increment player score by one
   @impl true
   def handle_cast({:update_score, login}, state) do
     new_state =
@@ -85,6 +89,7 @@ defmodule FirstAppWeb.Players do
     {:noreply, new_state}
   end
 
+  # delete player from list
   @impl true
   def handle_cast({:delete_player, login}, state) do
     new_state = Enum.reject(state, fn p -> p.login == login end)

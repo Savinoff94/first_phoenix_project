@@ -23,8 +23,10 @@ defmodule FirstAppWeb.LobbiesManager do
   ## Callbacks
   def init(state), do: {:ok, state}
 
+  # get all lobbies
   def handle_call(:all, _from, state), do: {:reply, Map.values(state), state}
 
+  # create lobby
   def handle_call({:create, attrs}, _from, state) do
     id = Integer.to_string(System.unique_integer([:positive]))
 
@@ -47,16 +49,19 @@ defmodule FirstAppWeb.LobbiesManager do
     {:reply, {:ok, lobby}, Map.put(state, id, lobby)}
   end
 
+  # get lobby
   def handle_call({:get, id}, _from, state) do
     {:reply, Map.get(state, id), state}
   end
 
+  # delete lobby
   def handle_call({:remove, id}, _from, state) do
     DynamicSupervisor.terminate_child(LobbySupervisor, pid_from_registry(id))
     PubSub.broadcast(FirstApp.PubSub, @topic, {:lobby_removed, id})
     {:reply, :ok, Map.delete(state, id)}
   end
 
+  # check password to access lobby
   def handle_call({:check_password, lobby_id, input_password, user_login}, _from, state) do
     case Map.get(state, lobby_id) do
       nil ->
@@ -78,6 +83,8 @@ defmodule FirstAppWeb.LobbiesManager do
   end
 
   ## Helper
+
+  # get process id
   defp pid_from_registry(id) do
     [{pid, _value}] = Registry.lookup(FirstAppWeb.LobbyRegistry, id)
     pid
