@@ -18,6 +18,7 @@ defmodule FirstApp.Application do
       {FirstAppWeb.LobbySupervisor, []},
       {FirstAppWeb.Players, []},
       {FirstAppWeb.LobbiesManager, []},
+      {FirstAppWeb.Presence, []},
       FirstAppWeb.Endpoint
     ]
 

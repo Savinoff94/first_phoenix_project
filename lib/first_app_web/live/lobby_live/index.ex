@@ -45,7 +45,8 @@ defmodule FirstAppWeb.LobbyLive.Index do
       name: lobby_params["name"],
       password: if(lobby_params["password"] == "", do: nil, else: lobby_params["password"]),
       maxPlayers: parse_int(lobby_params["maxPlayers"]),
-      maxSpectators: parse_int(lobby_params["maxSpectators"])
+      maxSpectators: parse_int(lobby_params["maxSpectators"]),
+      host: socket.assigns.login
     }
 
     {:ok, _lobby} = LobbiesManager.create(attrs)
@@ -173,6 +174,39 @@ defmodule FirstAppWeb.LobbyLive.Index do
     {:noreply, assign(socket, filters: filters, lobbies: filtered)}
   end
 
+
+  # User enter/left lobby
+
+  def handle_info({:user_entered_lobby, lobby_id, login, role}, socket) do
+    updated_lobby = LobbiesManager.get(lobby_id)
+
+    new_lobbies =
+      Enum.map(socket.assigns.lobbies, fn
+        %{id: ^lobby_id} -> updated_lobby
+        lobby -> lobby
+      end)
+
+    {:noreply,
+     socket
+     |> assign(:lobbies, new_lobbies)
+     |> put_flash(:info, "#{login} joined lobby #{lobby_id} as #{role}!")}
+  end
+
+  def handle_info({:user_left_lobby, lobby_id, login, role}, socket) do
+    updated_lobby = LobbiesManager.get(lobby_id)
+
+    new_lobbies =
+      Enum.map(socket.assigns.lobbies, fn
+        %{id: ^lobby_id} -> updated_lobby
+        lobby -> lobby
+      end)
+
+    {:noreply,
+     socket
+     |> assign(:lobbies, new_lobbies)
+     |> put_flash(:info, "#{login} left lobby #{lobby_id} as #{role}!")}
+  end
+
   # -----------------------------
   # RENDER
   # -----------------------------
@@ -269,14 +303,14 @@ defmodule FirstAppWeb.LobbyLive.Index do
             <tr class="hover:bg-gray-50">
               <td class="border p-2 font-medium"><%= lobby.name %></td>
               <td class="border p-2 text-center">
-                <%= length(lobby.players) %>/<%= lobby.maxPlayers || "∞" %>
+                <%= map_size(lobby.players) %>/<%= lobby.maxPlayers || "∞" %>
               </td>
               <td class="border p-2 text-center">
-                <%= length(lobby.spectators) %>/<%= lobby.maxSpectators || "∞" %>
+                <%= map_size(lobby.spectators) %>/<%= lobby.maxSpectators || "∞" %>
               </td>
               <td class="border p-2 text-center">
 
-              <%= if lobby.password && !(@login in lobby.approvedList) do %>
+              <%= if lobby.password && !Map.has_key?(lobby.approvedList, @login) do %>
                 <button
                   phx-click="toggle_check_lobby_password_modal"
                   phx-value-id={lobby.id}
@@ -286,7 +320,17 @@ defmodule FirstAppWeb.LobbyLive.Index do
                   🔒
                 </button>
               <% else %>
-                <.link navigate={~p"/lobby/#{lobby.id}"}><%= lobby.name %></.link>
+              <%= if map_size(lobby.players) < lobby.maxPlayers do %>
+                <.link navigate={~p"/lobby/#{lobby.id}/player"}>Join as Player</.link>
+              <% end %>
+
+              <%= if map_size(lobby.spectators) < lobby.maxSpectators do %>
+                <.link navigate={~p"/lobby/#{lobby.id}/spectator"}>Join as Spectator</.link>
+              <% end %>
+
+              <%= if map_size(lobby.players) >= lobby.maxPlayers and map_size(lobby.spectators) >= lobby.maxSpectators do %>
+                <span class="opacity-60 cursor-not-allowed">Lobby is full</span>
+              <% end %>
               <% end %>
 
               </td>
@@ -423,7 +467,7 @@ defmodule FirstAppWeb.LobbyLive.Index do
     Enum.filter(lobbies, fn lobby ->
       case lobby.maxPlayers do
         nil -> true
-        max when is_integer(max) -> length(lobby.players) < max
+        max when is_integer(max) -> map_size(lobby.players) < max
       end
     end)
   end
@@ -433,7 +477,7 @@ defmodule FirstAppWeb.LobbyLive.Index do
     Enum.filter(lobbies, fn lobby ->
       case lobby.maxSpectators do
         nil -> true
-        max when is_integer(max) -> length(lobby.spectators) < max
+        max when is_integer(max) -> map_size(lobby.spectators) < max
       end
     end)
   end

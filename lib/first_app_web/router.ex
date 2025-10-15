@@ -36,7 +36,7 @@ defmodule FirstAppWeb.Router do
 
   scope "/", FirstAppWeb do
     pipe_through [:browser, :protected, :require_lobby_access]
-    live "/lobby/:id", LobbyLive.Show
+    live "/lobby/:id/:role", LobbyLive.Show
   end
 
   # Other scopes may use custom stacks.
