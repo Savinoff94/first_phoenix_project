@@ -24,7 +24,11 @@ defmodule FirstAppWeb.LobbyLive.Show do
       scores: %{},
       host: host,
       leftPlayer: nil,
-      rightPlayer: nil
+      rightPlayer: nil,
+      timer_running: false,
+      tick: 0,
+      winner: "",
+      gameOverModalShow?: false
     )}
   end
 
@@ -41,6 +45,16 @@ defmodule FirstAppWeb.LobbyLive.Show do
     {:noreply, socket}
   end
 
+  def handle_event("start_timer", _params, socket) do
+    LobbyServer.start_round_timer(socket.assigns.lobby_id)
+    {:noreply, socket}
+  end
+
+  def handle_event("close_modal", _params, socket) do
+    LobbyServer.clear_winner(socket.assigns.lobby_id)
+    {:noreply, assign(socket, gameOverModalShow?: false, winner: "")}
+  end
+
   # -----------------------------
   # INFO HANDLERS
   # -----------------------------
@@ -49,62 +63,38 @@ defmodule FirstAppWeb.LobbyLive.Show do
     # IO.puts("♻️ Game state updated for lobby #{socket.assigns.lobby_id}")
     # IO.inspect(state, label: "Full Lobby State")
 
+    show_modal? =
+      case Map.get(state, :winner) do
+        nil -> false
+        "" -> false
+        "draw" -> true
+        _winner -> true
+      end
+      IO.puts("SHOW moDAL #{show_modal?}")
     {:noreply,
      assign(socket,
-       scores: state.scores,
-       leftPlayer: state.leftPlayer,
-       rightPlayer: state.rightPlayer,
-       host: state.host
+        scores: state.scores,
+        leftPlayer: state.leftPlayer,
+        rightPlayer: state.rightPlayer,
+        host: state.host,
+        winner: Map.get(state, :winner, ""),
+        gameOverModalShow?: show_modal?
     )}
   end
 
-  # def render(assigns) do
-  #   ~H"""
-  #   <%!-- <div id="lobby" phx-hook="LeaveLobby"> --%>
-  #   <h1>Lobby: !!!!!!!!!</h1>
-  #   <h1>Current user {@login}</h1>
-  #   <h1>Host {@host}</h1>
+  def handle_info({:timer_flag, true}, socket) do
+    {:noreply, assign(socket, timer_running: true, tick: 0)}
+  end
 
-  #   <div class="border rounded p-3 mb-4 bg-gray-50">
-  #     <h3 class="font-semibold mb-2">Current Pair:</h3>
+  def handle_info({:tick, n}, socket) do
+    {:noreply, assign(socket, tick: n)}
+  end
 
-  #     <p><strong>Left Player:</strong>
-  #       <%= if @leftPlayer != nil, do: @leftPlayer[:login], else: "Waiting..." %>
-  #     </p>
-
-  #     <p><strong>Right Player:</strong>
-  #       <%= if @rightPlayer != nil, do: @rightPlayer[:login], else: "Waiting..." %>
-  #     </p>
-
-  #     <p><strong>Left Selected:</strong>
-  #       <%= if @leftPlayer != nil, do: @leftPlayer[:selected], else: "-" %>
-  #     </p>
-
-  #     <p><strong>Right Selected:</strong>
-  #       <%= if @rightPlayer != nil, do: @rightPlayer[:selected], else: "-" %>
-  #     </p>
-  #   </div>
-  #   <ul>
-  #       <%= for {login, %{score: score}} <- @scores do %>
-  #         <li><%= login %> — <%= score %> points</li>
-  #       <% end %>
-
-  #       <%= if @login === @host do %>
-  #       <div>
-  #         <button>Start</button>
-  #         <button>Stop</button>
-  #         <button
-  #           phx-click="arrange_pair"
-  #           class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-  #         >
-  #           🔁 Next Round
-  #         </button>
-  #       </div>
-  #       <% end %>
-  #   </ul>
-  #   <%!-- </div> --%>
-  #   """
-  # end
+  def handle_info({:timer_flag, false}, socket) do
+    lobby_id = socket.assigns.lobby_id
+    LobbyServer.determine_winner(lobby_id)
+    {:noreply, assign(socket, timer_running: false)}
+  end
 
   def render(assigns) do
     ~H"""
@@ -112,6 +102,15 @@ defmodule FirstAppWeb.LobbyLive.Show do
       <h1 class="text-xl font-bold mb-2">Lobby: <%= @lobby_id %></h1>
       <h2 class="mb-2">Current user: <strong><%= @login %></strong></h2>
       <h2 class="mb-4">Host: <strong><%= @host %></strong></h2>
+
+      <!-- Timer display -->
+      <div class="mb-4 text-center">
+        <%= if @timer_running do %>
+          <p class="text-lg font-semibold text-green-600">⏱️ Round in progress: <%= @tick %>s</p>
+        <% else %>
+          <p class="text-lg font-semibold text-gray-500">🕒 Waiting for next round</p>
+        <% end %>
+      </div>
 
       <div class="border rounded p-3 mb-4 bg-gray-50">
         <h3 class="font-semibold mb-2">Current Pair:</h3>
@@ -126,11 +125,11 @@ defmodule FirstAppWeb.LobbyLive.Show do
 
             <%= if @leftPlayer && @login == @leftPlayer.login do %>
               <div class="mt-2 flex justify-center gap-2">
-                <button phx-click="player_select" phx-value-choice="Rock"
+                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Rock"
                   class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">🪨 Rock</button>
-                <button phx-click="player_select" phx-value-choice="Paper"
+                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Paper"
                   class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">📄 Paper</button>
-                <button phx-click="player_select" phx-value-choice="Scissors"
+                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Scissors"
                   class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">✂️ Scissors</button>
               </div>
             <% end %>
@@ -145,11 +144,11 @@ defmodule FirstAppWeb.LobbyLive.Show do
 
             <%= if @rightPlayer && @login == @rightPlayer.login do %>
               <div class="mt-2 flex justify-center gap-2">
-                <button phx-click="player_select" phx-value-choice="Rock"
+                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Rock"
                   class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">🪨 Rock</button>
-                <button phx-click="player_select" phx-value-choice="Paper"
+                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Paper"
                   class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">📄 Paper</button>
-                <button phx-click="player_select" phx-value-choice="Scissors"
+                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Scissors"
                   class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">✂️ Scissors</button>
               </div>
             <% end %>
@@ -165,7 +164,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
 
       <%= if @login == @host do %>
         <div class="mt-4 flex gap-2">
-          <button class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Start</button>
+          <button phx-click="start_timer" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Start</button>
           <button class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Stop</button>
           <button
             phx-click="arrange_pair"
@@ -173,6 +172,27 @@ defmodule FirstAppWeb.LobbyLive.Show do
           >
             🔁 Next Round
           </button>
+        </div>
+      <% end %>
+
+      <%= if @gameOverModalShow? do %>
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-white rounded-lg shadow-lg p-6 w-80 text-center">
+            <h2 class="text-xl font-bold mb-4">🎉 Game Over!</h2>
+
+            <%= if @winner == "draw" do %>
+              <p class="text-lg text-gray-700 mb-4">It's a draw!</p>
+            <% else %>
+              <p class="text-lg text-green-600 font-semibold mb-4">Winner: <%= @winner %></p>
+            <% end %>
+
+            <button
+              phx-click="close_modal"
+              class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              OK
+            </button>
+          </div>
         </div>
       <% end %>
     </div>

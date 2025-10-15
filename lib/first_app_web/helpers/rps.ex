@@ -1,4 +1,4 @@
-defmodule RPS do
+defmodule FirstAppWeb.RPS do
   @moduledoc """
   Simple Rock–Paper–Scissors winner determination.
   """

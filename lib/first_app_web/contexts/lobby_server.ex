@@ -22,6 +22,9 @@ defmodule FirstAppWeb.LobbyServer do
   def broadcast_state(id), do: GenServer.cast(via_tuple(id), :broadcast_state)
   def player_selected(id, login, choice),
     do: GenServer.cast(via_tuple(id), {:player_selected, login, choice})
+  def start_round_timer(id), do: GenServer.cast(via_tuple(id), :start_round_timer)
+  def determine_winner(id), do: GenServer.cast(via_tuple(id), :determine_winner)
+  def clear_winner(id), do: GenServer.cast(via_tuple(id), :clear_winner)
 
   # -----------------------------
   #  CALLBACKS
@@ -109,6 +112,11 @@ defmodule FirstAppWeb.LobbyServer do
     {:noreply, updated_state}
   end
 
+  def handle_cast(:start_round_timer, state) do
+    {:ok, _pid} = FirstAppWeb.TimerWorker.start_link(lobby_id: state.id, seconds: 5)
+    {:noreply, state}
+  end
+
   # ✅ Arrange pair
   def handle_cast({:arrange_pair, winner_login}, state) do
     cond do
@@ -150,10 +158,59 @@ defmodule FirstAppWeb.LobbyServer do
     end
   end
 
+  def handle_cast(:determine_winner, state) do
+    left = state.leftPlayer
+    right = state.rightPlayer
+
+    cond do
+      # Not enough players
+      is_nil(left) or is_nil(right) ->
+        Logger.info("⏸️ Not enough players to determine winner")
+        {:noreply, state}
+
+      # One or both players didn't choose
+      left.selected in [nil, ""] or right.selected in [nil, ""] ->
+        Logger.info("⏸️ One or both players did not make a selection")
+        {:noreply, state}
+
+      # Both players valid — determine the winner
+      true ->
+        winner = RPS.determine_winner(left, right)
+        result = if winner, do: winner, else: "draw"
+
+        Logger.info("🏁 Round result: #{inspect(result)}")
+
+        # Update scores if winner exists
+        new_state =
+          if winner do
+            update_in(state.scores[winner].score, fn
+              nil -> 1
+              score -> score + 1
+            end)
+          else
+            state
+          end
+
+        # Save winner field in the state
+        new_state = Map.put(new_state, :winner, result)
+
+        # Broadcast updated state to LiveViews
+        broadcast_state_full(new_state)
+
+        {:noreply, new_state}
+    end
+  end
+
   # ✅ Manual full-state broadcast
   def handle_cast(:broadcast_state, state) do
     broadcast_state_full(state)
     {:noreply, state}
+  end
+
+  def handle_cast(:clear_winner, state) do
+    new_state = Map.put(state, :winner, "")
+    broadcast_state_full(new_state)
+    {:noreply, new_state}
   end
 
   # -----------------------------
