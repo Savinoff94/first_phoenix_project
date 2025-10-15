@@ -94,11 +94,29 @@ defmodule FirstAppWeb.CoreComponents do
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
-    variants = %{"primary" => "btn-primary", nil => "btn-primary btn-soft"}
+    %{rest: rest} = assigns
+    IO.inspect(rest)
+    variants = %{
+      "primary" => "bg-blue-600 hover:bg-blue-700 text-white",
+      "secondary" => "bg-gray-200 hover:bg-gray-300 text-gray-800"
+    }
+    disabled? = Map.get(rest, "disabled", false)
 
     assigns =
-      assign_new(assigns, :class, fn ->
-        ["btn", Map.fetch!(variants, assigns[:variant])]
+      assigns
+      |> assign_new(:variant, fn -> "primary" end)
+      |> assign_new(:disabled, fn -> false end)
+      |> assign_new(:class, fn ->
+        base = "btn inline-flex items-center justify-center px-4 py-2 rounded font-semibold transition-colors"
+
+        variant_class = Map.get(variants, assigns.variant, variants["primary"])
+
+        disabled_class =
+          if disabled?,
+            do: "opacity-80 cursor-not-allowed",
+            else: ""
+
+        [base, variant_class, disabled_class]
       end)
 
     if rest[:href] || rest[:navigate] || rest[:patch] do
@@ -109,7 +127,7 @@ defmodule FirstAppWeb.CoreComponents do
       """
     else
       ~H"""
-      <button class={@class} {@rest}>
+      <button class={@class} disabled={@disabled} {@rest}>
         {render_slot(@inner_block)}
       </button>
       """
