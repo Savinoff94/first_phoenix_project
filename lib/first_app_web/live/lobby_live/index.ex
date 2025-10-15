@@ -2,6 +2,8 @@ defmodule FirstAppWeb.LobbyLive.Index do
   use FirstAppWeb, :live_view
   alias FirstAppWeb.LobbiesManager
   alias Phoenix.PubSub
+  import FirstAppWeb.CoreComponents
+  import FirstAppWeb.UI
 
   def mount(_params, session, socket) do
     if connected?(socket), do: LobbiesManager.subscribe_to_updates()
@@ -213,215 +215,224 @@ defmodule FirstAppWeb.LobbyLive.Index do
 
   def render(assigns) do
     ~H"""
-    <div class="p-6">
+    <div class="p-6 h-screen flex flex-col items-center mt-[100px]">
       <h1 class="text-2xl font-bold mb-4">🎮 Lobbies</h1>
 
-      <!-- Filters -->
-      <div class="flex flex-wrap items-center gap-4 mb-6">
-        <form
-          phx-change="update_filter"
-        >
-          <input
-            type="text"
-            placeholder="Search by name..."
-            value={@filters.name}
-            phx-debounce="300"
-            name="name"
-            phx-value-filter="name"
-            phx-value-value={@filters.name}
-            class="border rounded px-2 py-1"
-          />
-
-
-
-          <label>
-            <input
-              type="checkbox"
-              phx-click="update_filter"
-              phx-value-filter="only_without_password"
-              phx-value-value={!@filters.only_without_password}
-              checked={@filters.only_without_password}
-            />
-            Only without password
-          </label>
-
-          <label>
-            <input
-              type="checkbox"
-              phx-click="update_filter"
-              name="filter"
-              phx-value-filter="only_with_player_slots"
-              phx-value-value={!@filters.only_with_player_slots}
-              checked={@filters.only_with_player_slots}
-            />
-            Has player slots
-          </label>
-
-          <label>
-            <input
-              type="checkbox"
-              phx-click="update_filter"
-              name="filter"
-              phx-value-filter="only_with_spectator_slots"
-              phx-value-value={!@filters.only_with_spectator_slots}
-              checked={@filters.only_with_spectator_slots}
-            />
-            Has spectator slots
-          </label>
-
-          <select
-            phx-change="update_filter"
-            name="order"
-            phx-value-filter="order"
-            class="border rounded px-2 py-1"
-          >
-            <option value="asc" selected={@filters.order == :asc}>A → Z</option>
-            <option value="desc" selected={@filters.order == :desc}>Z → A</option>
-          </select>
-        </form>
-
-        <button
-          class="ml-auto bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-          phx-click="toggle_create_lobby_modal"
-        >
-          Create Lobby
-        </button>
-      </div>
-
       <!-- Lobbies Table -->
-      <table class="min-w-full border-collapse border border-gray-300">
-        <thead class="bg-gray-100">
-          <tr>
-            <th class="border p-2 text-left">Name</th>
-            <th class="border p-2">Players</th>
-            <th class="border p-2">Spectators</th>
-            <th class="border p-2">Password</th>
-          </tr>
-        </thead>
+      <.table_styled>
+        <.thead_styled>
+          <.form for={%{}} phx-change="update_filter">
+            <tr>
+              <.table_header_col>
+                <.button
+                  title="Create lobby"
+                  variant="primary"
+                  phx-click="toggle_create_lobby_modal"
+                  class="bg-green-600 hover:bg-green-700 p-2 rounded text-white font-semibold shadow-md flex items-center gap-2"
+                >
+                ➕
+                </.button>
+                <.input
+                  type="text"
+                  name="name"
+                  placeholder="Search by name..."
+                  value={@filters.name}
+                  phx-debounce="300"
+                  phx-value-filter="name"
+                  phx-value-value={@filters.name}
+                  class="w-[100px] "
+                />
+                <.input
+                  type="select"
+                  name="order"
+                  phx-change="update_filter"
+                  phx-value-filter="order"
+                  options={[
+                    {"A → Z", "asc"},
+                    {"Z → A", "desc"}
+                  ]}
+                  value={Atom.to_string(@filters.order)}
+                  class="w-fit"
+                />
+              </.table_header_col>
+              <.table_header_col>
+                <span>Players</span>
+                <label class="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    phx-click="update_filter"
+                    phx-value-filter="only_with_player_slots"
+                    phx-value-value={!@filters.only_with_player_slots}
+                    checked={@filters.only_with_player_slots}
+                  />
+                </label>
+              </.table_header_col>
+              <.table_header_col>
+                <span>Spectators</span>
+                <label class="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    phx-click="update_filter"
+                    phx-value-filter="only_with_spectator_slots"
+                    phx-value-value={!@filters.only_with_spectator_slots}
+                    checked={@filters.only_with_spectator_slots}
+                  />
+                </label>
+              </.table_header_col>
+              <.table_header_col>
+                <span>Password</span>
+                <label class="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    phx-click="update_filter"
+                    phx-value-filter="only_without_password"
+                    phx-value-value={!@filters.only_without_password}
+                    checked={@filters.only_without_password}
+                  />
+                </label>
+              </.table_header_col>
+            </tr>
+          </.form>
+        </.thead_styled>
         <tbody>
           <%= for lobby <- @lobbies do %>
-            <tr class="hover:bg-gray-50">
-              <td class="border p-2 font-medium"><%= lobby.name %></td>
-              <td class="border p-2 text-center">
+            <.tr_styled>
+              <.td_styled><%= lobby.name %></.td_styled>
+              <.td_styled>
                 <%= map_size(lobby.players) %>/<%= lobby.maxPlayers || "∞" %>
-              </td>
-              <td class="border p-2 text-center">
+              </.td_styled>
+              <.td_styled>
                 <%= map_size(lobby.spectators) %>/<%= lobby.maxSpectators || "∞" %>
-              </td>
-              <td class="border p-2 text-center">
+              </.td_styled>
+              <.td_styled>
+                <div class="pl-2">
+                  <%= if lobby.password && !Map.has_key?(lobby.approvedList, @login) do %>
+                    <.button
+                      variant="secondary"
+                      phx-click="toggle_check_lobby_password_modal"
+                      phx-value-id={lobby.id}
+                      class="flex justify-center w-[86px] bg-gray-500 hover:bg-gray-600 px-3 py-1.5 rounded shadow-lg transition hover:scale-[1.05]"
+                      title="Join with password"
+                    >
+                      🔒
+                    </.button>
+                  <% else %>
+                    <%= if map_size(lobby.players) < lobby.maxPlayers do %>
+                      <.link
+                      navigate={~p"/lobby/#{lobby.id}/player"}
+                      title="Join this lobby as a player"
+                      class="inline-block bg-blue-400 hover:bg-blue-500 text-white px-3 py-1.5 rounded shadow-sm transition"
+                      >
+                        🎮
+                      </.link>
+                    <% end %>
 
-              <%= if lobby.password && !Map.has_key?(lobby.approvedList, @login) do %>
-                <button
-                  phx-click="toggle_check_lobby_password_modal"
-                  phx-value-id={lobby.id}
-                  class="text-yellow-600 hover:text-yellow-800"
-                  title="Join with password"
-                >
-                  🔒
-                </button>
-              <% else %>
-              <%= if map_size(lobby.players) < lobby.maxPlayers do %>
-                <.link navigate={~p"/lobby/#{lobby.id}/player"}>Join as Player</.link>
-              <% end %>
+                    <%= if map_size(lobby.spectators) < lobby.maxSpectators do %>
+                      <.link
+                      navigate={~p"/lobby/#{lobby.id}/spectator"}
+                      title="Watch this match as a spectator"
+                      class="inline-block bg-amber-600 hover:bg-amber-800 text-white px-3 py-1.5 rounded shadow-sm transition"
+                      >
+                        👀
+                      </.link>
+                    <% end %>
 
-              <%= if map_size(lobby.spectators) < lobby.maxSpectators do %>
-                <.link navigate={~p"/lobby/#{lobby.id}/spectator"}>Join as Spectator</.link>
-              <% end %>
-
-              <%= if map_size(lobby.players) >= lobby.maxPlayers and map_size(lobby.spectators) >= lobby.maxSpectators do %>
-                <span class="opacity-60 cursor-not-allowed">Lobby is full</span>
-              <% end %>
-              <% end %>
-
-              </td>
-            </tr>
+                    <%= if map_size(lobby.players) >= lobby.maxPlayers and
+                          map_size(lobby.spectators) >= lobby.maxSpectators do %>
+                      <span class="opacity-60 cursor-not-allowed">Lobby is full</span>
+                    <% end %>
+                  <% end %>
+                </div>
+              </.td_styled>
+            </.tr_styled>
           <% end %>
         </tbody>
-      </table>
+      </.table_styled>
     </div>
 
-    <!-- Modal -->
-    <%= if @show_create_lobby_modal do %>
-      <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
-        <div class="bg-white p-6 rounded-lg w-[400px] shadow-lg">
-          <h2 class="text-lg font-bold mb-4">Create New Lobby</h2>
+<!-- Create Lobby Modal -->
+<%= if @show_create_lobby_modal do %>
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
+    <div class="bg-white p-6 rounded-lg w-[400px] shadow-lg">
+      <h2 class="text-lg font-bold mb-4">Create New Lobby</h2>
 
-          <form phx-submit="create_lobby">
-            <div class="space-y-3">
-              <input
-                type="text"
-                name="lobby[name]"
-                placeholder="Lobby Name"
-                value={@create_lobby_form_data.name}
-                class="w-full border rounded px-2 py-1"
-              />
-              <input
-                type="text"
-                name="lobby[password]"
-                placeholder="Password (optional)"
-                value={@create_lobby_form_data.password}
-                class="w-full border rounded px-2 py-1"
-              />
-              <input
-                type="number"
-                name="lobby[maxPlayers]"
-                placeholder="Max Players"
-                value={@create_lobby_form_data.maxPlayers}
-                class="w-full border rounded px-2 py-1"
-              />
-              <input
-                type="number"
-                name="lobby[maxSpectators]"
-                placeholder="Max Spectators"
-                value={@create_lobby_form_data.maxSpectators}
-                class="w-full border rounded px-2 py-1"
-              />
-            </div>
+      <.form for={%{}} phx-submit="create_lobby">
+        <.input
+          type="text"
+          name="lobby[name]"
+          label="Lobby Name"
+          value={@create_lobby_form_data.name}
+          placeholder="Lobby Name"
+        />
+        <.input
+          type="text"
+          name="lobby[password]"
+          label="Password (optional)"
+          value={@create_lobby_form_data.password}
+          placeholder="Password (optional)"
+        />
+        <.input
+          type="number"
+          name="lobby[maxPlayers]"
+          label="Max Players"
+          value={@create_lobby_form_data.maxPlayers}
+        />
+        <.input
+          type="number"
+          name="lobby[maxSpectators]"
+          label="Max Spectators"
+          value={@create_lobby_form_data.maxSpectators}
+        />
 
-            <div class="mt-5 flex justify-end gap-2">
-              <button type="button" phx-click="toggle_create_lobby_modal" class="px-3 py-1 border rounded">
-                Cancel
-              </button>
-              <button type="submit" class="px-3 py-1 bg-blue-600 text-white rounded">
-                Create
-              </button>
-            </div>
-          </form>
+        <div class="mt-5 flex justify-end gap-2">
+          <.button
+            type="button"
+            variant="secondary"
+            phx-click="toggle_create_lobby_modal"
+          >
+            Cancel
+          </.button>
+
+          <.button variant="primary" type="submit">Create</.button>
         </div>
-      </div>
-    <% end %>
+      </.form>
+    </div>
+  </div>
+<% end %>
 
-    <!-- Check password modal -->
-    <%= if @show_check_password_modal do %>
-      <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
-        <div class="bg-white p-6 rounded-lg w-[400px] shadow-lg">
-          <h2 class="text-lg font-bold mb-4">Password</h2>
+<!-- Check Password Modal -->
+<%= if @show_check_password_modal do %>
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
+    <div class="bg-white p-6 rounded-lg w-[400px] shadow-lg">
+      <h2 class="text-lg font-bold mb-4">Password</h2>
 
-          <form phx-submit="check_lobby_password">
-            <div class="space-y-3">
-              <input
-                type="text"
-                name="password"
-                placeholder="Lobby password"
-                value={@check_password_form_data.password}
-                class="w-full border rounded px-2 py-1"
-              />
-            </div>
+      <.form for={%{}} phx-submit="check_lobby_password">
+        <.input
+          type="text"
+          name="password"
+          label="Lobby password"
+          value={@check_password_form_data.password}
+          placeholder="Lobby password"
+        />
 
-            <div class="mt-5 flex justify-end gap-2">
-              <button type="button" phx-click="close_check_lobby_password_modal" class="px-3 py-1 border rounded">
-                Cancel
-              </button>
-              <button type="submit" class="px-3 py-1 bg-blue-600 text-white rounded">
-                Submit
-              </button>
-            </div>
-          </form>
+        <div class="mt-5 flex justify-end gap-2">
+          <.button
+            type="button"
+            variant="secondary"
+            phx-click="close_check_lobby_password_modal"
+          >
+            Cancel
+          </.button>
+
+          <.button variant="primary" type="submit">Submit</.button>
         </div>
-      </div>
-    <% end %>
+      </.form>
+    </div>
+  </div>
+<% end %>
     """
   end
+
 
   # -----------------------------
   # HELPERS
