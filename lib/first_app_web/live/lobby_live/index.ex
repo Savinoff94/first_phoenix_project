@@ -216,7 +216,17 @@ defmodule FirstAppWeb.LobbyLive.Index do
   def render(assigns) do
     ~H"""
     <div class="p-6 h-screen flex flex-col items-center mt-[100px]">
-      <h1 class="text-2xl font-bold mb-4">🎮 Lobbies</h1>
+      <h1 class="text-2xl max-h-8 font-bold mb-4 flex gap-2 ">
+      🎮 Lobbies
+      <.button
+        title="Create lobby"
+        variant="primary"
+        phx-click="toggle_create_lobby_modal"
+        class="bg-green-600 hover:bg-green-700 p-2 rounded text-white font-semibold shadow-md flex items-center gap-2"
+      >
+      ➕
+      </.button>
+      </h1>
 
       <!-- Lobbies Table -->
       <.table_styled>
@@ -224,14 +234,6 @@ defmodule FirstAppWeb.LobbyLive.Index do
           <.form for={%{}} phx-change="update_filter">
             <tr>
               <.table_header_col>
-                <.button
-                  title="Create lobby"
-                  variant="primary"
-                  phx-click="toggle_create_lobby_modal"
-                  class="bg-green-600 hover:bg-green-700 p-2 rounded text-white font-semibold shadow-md flex items-center gap-2"
-                >
-                ➕
-                </.button>
                 <.input
                   type="text"
                   name="name"
@@ -363,6 +365,7 @@ defmodule FirstAppWeb.LobbyLive.Index do
           label="Lobby Name"
           value={@create_lobby_form_data.name}
           placeholder="Lobby Name"
+          required
         />
         <.input
           type="text"
@@ -375,13 +378,17 @@ defmodule FirstAppWeb.LobbyLive.Index do
           type="number"
           name="lobby[maxPlayers]"
           label="Max Players"
-          value={@create_lobby_form_data.maxPlayers}
+          value={@create_lobby_form_data.maxPlayers || 2}
+          required
+          min="2"
         />
         <.input
           type="number"
           name="lobby[maxSpectators]"
           label="Max Spectators"
-          value={@create_lobby_form_data.maxSpectators}
+          value={@create_lobby_form_data.maxSpectators || 0}
+          required
+          min="0"
         />
 
         <div class="mt-5 flex justify-end gap-2">
@@ -413,6 +420,7 @@ defmodule FirstAppWeb.LobbyLive.Index do
           label="Lobby password"
           value={@check_password_form_data.password}
           placeholder="Lobby password"
+          required
         />
 
         <div class="mt-5 flex justify-end gap-2">
