@@ -209,7 +209,6 @@ defmodule FirstAppWeb.LobbyServer do
 
   def handle_cast(:clear_winner, state) do
     new_state = Map.put(state, :winner, "")
-    broadcast_state_full(new_state)
     {:noreply, new_state}
   end
 
