@@ -30,6 +30,7 @@ defmodule FirstAppWeb.LobbyLive.Index do
       |> assign(:create_lobby_error, nil)
       |> assign(:create_lobby_form_data, empty_create_lobby_form())
       |> assign(:show_check_password_modal, false)
+      |> assign(:check_password_error, nil)
       |> assign(:check_password_form_data, empty_check_password_form())
 
     {:ok, socket}
@@ -73,10 +74,7 @@ defmodule FirstAppWeb.LobbyLive.Index do
     end
   end
 
-  # On Lobby created subscription
-  def handle_info({:lobby_created, _lobby}, socket) do
-    {:noreply, assign(socket, :lobbies, LobbiesManager.all())}
-  end
+
 
   # Toggle create lobby modal
   def handle_event("toggle_create_lobby_modal", _params, socket) do
@@ -85,9 +83,6 @@ defmodule FirstAppWeb.LobbyLive.Index do
      |> update(:show_create_lobby_modal, &(!&1))
      |> assign(:create_lobby_error, nil)}
   end
-
-
-  # Check Lobby password
 
 
   # Check lobby password
@@ -101,14 +96,13 @@ defmodule FirstAppWeb.LobbyLive.Index do
          socket
          |> assign(:lobbies, get_filtered_lobbies(socket))
          |> assign(:show_check_password_modal, false)
-         |> assign(:check_password_form_data, %{lobbyId: nil, password: ""})
-         |> put_flash(:info, "Access granted!")}
+         |> assign(:check_password_form_data, %{lobbyId: nil, password: ""})}
 
       {:error, :wrong_password} ->
-        {:noreply, put_flash(socket, :error, "Wrong password, try again.")}
+        {:noreply, assign(socket, :check_password_error, "Wrong password, try again.")}
 
       {:error, :not_found} ->
-        {:noreply, put_flash(socket, :error, "Lobby not found.")}
+        {:noreply, assign(socket, :check_password_error, "Lobby not found.")}
     end
   end
 
@@ -191,10 +185,21 @@ defmodule FirstAppWeb.LobbyLive.Index do
 
     {:noreply, assign(socket, filters: filters, lobbies: filtered)}
   end
+
+  # get rid of error in input
   def handle_event("update_create_lobby_form", %{"lobby" => _params}, socket) do
     {:noreply, assign(socket, :create_lobby_error, nil)}
   end
+  def handle_event("update_check_password_form", _params, socket) do
+    {:noreply, assign(socket, :check_password_error, nil)}
+  end
 
+
+
+  # On Lobby created subscription
+  def handle_info({:lobby_created, _lobby}, socket) do
+    {:noreply, assign(socket, :lobbies, LobbiesManager.all())}
+  end
 
   # User enter/left lobby
 
@@ -209,8 +214,7 @@ defmodule FirstAppWeb.LobbyLive.Index do
 
     {:noreply,
      socket
-     |> assign(:lobbies, new_lobbies)
-     |> put_flash(:info, "#{login} joined lobby #{lobby_id} as #{role}!")}
+     |> assign(:lobbies, new_lobbies)}
   end
 
   def handle_info({:user_left_lobby, lobby_id, login, role}, socket) do
@@ -224,8 +228,7 @@ defmodule FirstAppWeb.LobbyLive.Index do
 
     {:noreply,
      socket
-     |> assign(:lobbies, new_lobbies)
-     |> put_flash(:info, "#{login} left lobby #{lobby_id} as #{role}!")}
+     |> assign(:lobbies, new_lobbies)}
   end
 
   # -----------------------------
@@ -371,93 +374,94 @@ defmodule FirstAppWeb.LobbyLive.Index do
       </.table_styled>
     </div>
 
-<!-- Create Lobby Modal -->
-<%= if @show_create_lobby_modal do %>
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
-    <div class="bg-white p-6 rounded-lg w-[400px] shadow-lg">
-      <h2 class="text-lg font-bold mb-4">Create New Lobby</h2>
+    <!-- Create Lobby Modal -->
+    <%= if @show_create_lobby_modal do %>
+      <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg w-[400px] shadow-lg">
+          <h2 class="text-lg font-bold mb-4">Create New Lobby</h2>
 
-      <.form for={%{}} phx-change="update_create_lobby_form" phx-submit="create_lobby">
-        <.input
-          errors={if is_nil(@create_lobby_error), do: [], else: [@create_lobby_error]}
-          type="text"
-          name="lobby[name]"
-          label="Lobby Name"
-          value={@create_lobby_form_data.name}
-          placeholder="Lobby Name"
-          required
-        />
-        <.input
-          type="text"
-          name="lobby[password]"
-          label="Password (optional)"
-          value={@create_lobby_form_data.password}
-          placeholder="Password (optional)"
-        />
-        <.input
-          type="number"
-          name="lobby[maxPlayers]"
-          label="Max Players"
-          value={@create_lobby_form_data.maxPlayers || 2}
-          required
-          min="2"
-        />
-        <.input
-          type="number"
-          name="lobby[maxSpectators]"
-          label="Max Spectators"
-          value={@create_lobby_form_data.maxSpectators || 0}
-          required
-          min="0"
-        />
+          <.form for={%{}} phx-change="update_create_lobby_form" phx-submit="create_lobby">
+            <.input
+              errors={if is_nil(@create_lobby_error), do: [], else: [@create_lobby_error]}
+              type="text"
+              name="lobby[name]"
+              label="Lobby Name"
+              value={@create_lobby_form_data.name}
+              placeholder="Lobby Name"
+              required
+            />
+            <.input
+              type="text"
+              name="lobby[password]"
+              label="Password (optional)"
+              value={@create_lobby_form_data.password}
+              placeholder="Password (optional)"
+            />
+            <.input
+              type="number"
+              name="lobby[maxPlayers]"
+              label="Max Players"
+              value={@create_lobby_form_data.maxPlayers || 2}
+              required
+              min="2"
+            />
+            <.input
+              type="number"
+              name="lobby[maxSpectators]"
+              label="Max Spectators"
+              value={@create_lobby_form_data.maxSpectators || 0}
+              required
+              min="0"
+            />
 
-        <div class="mt-5 flex justify-end gap-2">
-          <.button
-            type="button"
-            variant="secondary"
-            phx-click="toggle_create_lobby_modal"
-          >
-            Cancel
-          </.button>
+            <div class="mt-5 flex justify-end gap-2">
+              <.button
+                type="button"
+                variant="secondary"
+                phx-click="toggle_create_lobby_modal"
+              >
+                Cancel
+              </.button>
 
-          <.button variant="primary" type="submit">Create</.button>
+              <.button variant="primary" type="submit">Create</.button>
+            </div>
+          </.form>
         </div>
-      </.form>
-    </div>
-  </div>
-<% end %>
+      </div>
+    <% end %>
 
-<!-- Check Password Modal -->
-<%= if @show_check_password_modal do %>
-  <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
-    <div class="bg-white p-6 rounded-lg w-[400px] shadow-lg">
-      <h2 class="text-lg font-bold mb-4">Password</h2>
+    <!-- Check Password Modal -->
+    <%= if @show_check_password_modal do %>
+      <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg w-[400px] shadow-lg">
+          <h2 class="text-lg font-bold mb-4">Password</h2>
 
-      <.form for={%{}} phx-submit="check_lobby_password">
-        <.input
-          type="text"
-          name="password"
-          label="Lobby password"
-          value={@check_password_form_data.password}
-          placeholder="Lobby password"
-          required
-        />
+          <.form for={%{}} phx-change="update_check_password_form" phx-submit="check_lobby_password">
+            <.input
+              errors={if is_nil(@check_password_error), do: [], else: [@check_password_error]}
+              type="text"
+              name="password"
+              label="Lobby password"
+              value={@check_password_form_data.password}
+              placeholder="Lobby password"
+              required
+            />
 
-        <div class="mt-5 flex justify-end gap-2">
-          <.button
-            type="button"
-            variant="secondary"
-            phx-click="close_check_lobby_password_modal"
-          >
-            Cancel
-          </.button>
+            <div class="mt-5 flex justify-end gap-2">
+              <.button
+                type="button"
+                variant="secondary"
+                phx-click="close_check_lobby_password_modal"
+              >
+                Cancel
+              </.button>
 
-          <.button variant="primary" type="submit">Submit</.button>
+              <.button variant="primary" type="submit">Submit</.button>
+            </div>
+          </.form>
         </div>
-      </.form>
-    </div>
-  </div>
-<% end %>
+      </div>
+    <% end %>
     """
   end
 

@@ -90,11 +90,11 @@ defmodule FirstAppWeb.CoreComponents do
   """
   attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
   attr :class, :string
-  attr :variant, :string, values: ~w(primary)
+  attr :variant, :string, values: ~w(primary secondary)
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
-    %{rest: rest} = assigns
+
     IO.inspect(rest)
     variants = %{
       "primary" => "bg-blue-600 hover:bg-blue-700 text-white",
