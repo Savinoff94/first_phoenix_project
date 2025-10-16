@@ -56,7 +56,14 @@ defmodule FirstAppWeb.LobbyServer do
   def handle_cast({:add_player, login}, state) do
     new_state =
       state
-      |> Map.update!(:scores, &Map.put(&1, login, %{score: 0}))
+      |> Map.update!(:scores, fn scores ->
+        # Only add if player not already in scores
+        if Map.has_key?(scores, login) do
+          scores
+        else
+          Map.put(scores, login, %{score: 0})
+        end
+      end)
       |> Map.update(:order, [login], fn order ->
         if login in order, do: order, else: order ++ [login]
       end)
@@ -72,7 +79,6 @@ defmodule FirstAppWeb.LobbyServer do
   def handle_cast({:remove_player, login}, state) do
     new_state =
       state
-      |> Map.update!(:scores, &Map.delete(&1, login))
       |> Map.update(:order, [], fn order ->
         Enum.reject(order, &(&1 == login))
       end)
