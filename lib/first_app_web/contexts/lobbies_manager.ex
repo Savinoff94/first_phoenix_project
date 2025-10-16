@@ -12,6 +12,10 @@ defmodule FirstAppWeb.LobbiesManager do
   def get(id), do: GenServer.call(__MODULE__, {:get, id})
   def remove(id), do: GenServer.call(__MODULE__, {:remove, id})
 
+  def lobby_exists_by_name?(name) do
+    GenServer.call(__MODULE__, {:lobby_exists_by_name?, name})
+  end
+
   def subscribe_to_updates do
     PubSub.subscribe(FirstApp.PubSub, @topic)
   end
@@ -142,6 +146,17 @@ defmodule FirstAppWeb.LobbiesManager do
 
         {:reply, {:ok, updated_lobby}, new_state}
     end
+  end
+
+  def handle_call({:lobby_exists_by_name?, name}, _from, state) do
+    exists? =
+      state
+      |> Map.values()
+      |> Enum.any?(fn lobby ->
+        String.downcase(lobby.name || "") == String.downcase(name)
+      end)
+
+    {:reply, exists?, state}
   end
 
   ## Helper

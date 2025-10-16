@@ -27,6 +27,7 @@ defmodule FirstAppWeb.LobbyLive.Index do
       |> assign(:filters, filters)
       |> assign(:lobbies, filtered)
       |> assign(:show_create_lobby_modal, false)
+      |> assign(:create_lobby_error, nil)
       |> assign(:create_lobby_form_data, empty_create_lobby_form())
       |> assign(:show_check_password_modal, false)
       |> assign(:check_password_form_data, empty_check_password_form())
@@ -43,21 +44,33 @@ defmodule FirstAppWeb.LobbyLive.Index do
 
   # Create lobby submit form
   def handle_event("create_lobby", %{"lobby" => lobby_params}, socket) do
-    attrs = %{
-      name: lobby_params["name"],
-      password: if(lobby_params["password"] == "", do: nil, else: lobby_params["password"]),
-      maxPlayers: parse_int(lobby_params["maxPlayers"]),
-      maxSpectators: parse_int(lobby_params["maxSpectators"]),
-      host: socket.assigns.login
-    }
+    name = lobby_params["name"]
 
-    {:ok, _lobby} = LobbiesManager.create(attrs)
+    # Step 1: Check if lobby with this name already exists
+    if LobbiesManager.lobby_exists_by_name?(name) do
+      {:noreply,
+      assign(socket,
+        create_lobby_error: "Lobby with such name already exists"
+      )}
+    else
+      # Step 2: Proceed to create
+      attrs = %{
+        name: name,
+        password: if(lobby_params["password"] == "", do: nil, else: lobby_params["password"]),
+        maxPlayers: parse_int(lobby_params["maxPlayers"]),
+        maxSpectators: parse_int(lobby_params["maxSpectators"]),
+        host: socket.assigns.login
+      }
 
-    {:noreply,
-     socket
-     |> assign(:lobbies, get_filtered_lobbies(socket))
-     |> assign(:show_create_lobby_modal, false)
-     |> assign(:create_lobby_form_data, empty_create_lobby_form())}
+      {:ok, _lobby} = LobbiesManager.create(attrs)
+
+      {:noreply,
+      socket
+      |> assign(:lobbies, get_filtered_lobbies(socket))
+      |> assign(:show_create_lobby_modal, false)
+      |> assign(:create_lobby_form_data, empty_create_lobby_form())
+      |> assign(:create_lobby_error, nil)}
+    end
   end
 
   # On Lobby created subscription
@@ -67,7 +80,10 @@ defmodule FirstAppWeb.LobbyLive.Index do
 
   # Toggle create lobby modal
   def handle_event("toggle_create_lobby_modal", _params, socket) do
-    {:noreply, update(socket, :show_create_lobby_modal, &(!&1))}
+    {:noreply,
+     socket
+     |> update(:show_create_lobby_modal, &(!&1))
+     |> assign(:create_lobby_error, nil)}
   end
 
 
@@ -174,6 +190,9 @@ defmodule FirstAppWeb.LobbyLive.Index do
     filtered = apply_filters(lobbies, filters)
 
     {:noreply, assign(socket, filters: filters, lobbies: filtered)}
+  end
+  def handle_event("update_create_lobby_form", %{"lobby" => _params}, socket) do
+    {:noreply, assign(socket, :create_lobby_error, nil)}
   end
 
 
@@ -358,8 +377,9 @@ defmodule FirstAppWeb.LobbyLive.Index do
     <div class="bg-white p-6 rounded-lg w-[400px] shadow-lg">
       <h2 class="text-lg font-bold mb-4">Create New Lobby</h2>
 
-      <.form for={%{}} phx-submit="create_lobby">
+      <.form for={%{}} phx-change="update_create_lobby_form" phx-submit="create_lobby">
         <.input
+          errors={if is_nil(@create_lobby_error), do: [], else: [@create_lobby_error]}
           type="text"
           name="lobby[name]"
           label="Lobby Name"
