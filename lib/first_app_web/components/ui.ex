@@ -88,7 +88,7 @@ defmodule FirstAppWeb.UI do
             width="72"
             class={[
               "absolute transition-opacity",
-              @player && @player.selected == "Rock" && "block" || "hidden"
+              is_allowed_to_see(@player, @login, @timer_running) && @player && @player.selected == "Rock" && "block" || "hidden"
             ]}
           />
           <img
@@ -96,7 +96,7 @@ defmodule FirstAppWeb.UI do
             width="72"
             class={[
               "absolute transition-opacity",
-              @player && @player.selected == "Paper" && "block" || "hidden"
+              is_allowed_to_see(@player, @login, @timer_running) && @player && @player.selected == "Paper" && "block" || "hidden"
             ]}
           />
           <img
@@ -104,7 +104,7 @@ defmodule FirstAppWeb.UI do
             width="72"
             class={[
               "absolute transition-opacity",
-              @player && @player.selected == "Scissors" && "block" || "hidden"
+              is_allowed_to_see(@player, @login, @timer_running) && @player && @player.selected == "Scissors" && "block" || "hidden"
             ]}
           />
           <img
@@ -112,7 +112,7 @@ defmodule FirstAppWeb.UI do
             width="72"
             class={[
               "absolute text-gray-400",
-              @player && @player.selected in ["Rock", "Paper", "Scissors"] && "hidden" || "block"
+              is_allowed_to_see(@player, @login, @timer_running) && @player && @player.selected in ["Rock", "Paper", "Scissors"] && "hidden" || "block"
             ]}
           />
         </p>
@@ -127,6 +127,22 @@ defmodule FirstAppWeb.UI do
       </p>
     </div>
     """
+  end
+
+  def is_allowed_to_see(player, login, timer_running) do
+    cond do
+      is_nil(player) ->
+        false
+
+      timer_running and login == player.login ->
+        true
+
+      timer_running ->
+        false
+
+      true ->
+        true
+    end
   end
 
 end
