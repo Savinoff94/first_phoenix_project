@@ -1,3 +1,12 @@
+# 🚀 Clone this repository
+
+To get a local copy up and running, run:
+```bash
+git clone git@github.com:Savinoff94/first_phoenix_project.git
+cd first_app
+
+```markdown
+
 # FirstApp
 
 To start your Phoenix server:
