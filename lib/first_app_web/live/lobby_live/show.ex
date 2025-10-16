@@ -150,7 +150,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
           <h3 class="text-center text-lg font-semibold text-gray-700 mb-3">
             🏆 Lobby Leaders
           </h3>
-          <%= for {login, %{score: score}} <- @scores do %>
+          <%= for {login, %{score: score}} <- sorted_scores_desc(@scores) do %>
             <li
               class="flex justify-between items-center py-1.5 px-2 border-b border-gray-200 last:border-0"
             >
@@ -205,5 +205,10 @@ defmodule FirstAppWeb.LobbyLive.Show do
     IO.inspect(socket, label: "player left terminate", pretty: true)
     # TODO if host leaves stop game
     :ok
+  end
+
+  defp sorted_scores_desc(scores) when is_map(scores) do
+    scores
+    |> Enum.sort_by(fn {_login, %{score: score}} -> score end, :desc)
   end
 end
