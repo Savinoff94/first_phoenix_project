@@ -93,8 +93,9 @@ defmodule FirstAppWeb.LobbyLive.Show do
   end
 
   def handle_info({:timer_flag, false}, socket) do
-    lobby_id = socket.assigns.lobby_id
-    LobbyServer.determine_winner(lobby_id)
+    IO.puts(":timer_flag")
+    # lobby_id = socket.assigns.lobby_id
+    # LobbyServer.determine_winner(lobby_id)
     {:noreply, assign(socket, timer_running: false)}
   end
 

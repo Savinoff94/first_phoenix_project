@@ -33,6 +33,8 @@ defmodule FirstAppWeb.LobbyServer do
   def init(lobby) do
     Logger.info("✅ Started LobbyServer for #{lobby.name} (#{lobby.id})")
 
+    PubSub.subscribe(FirstApp.PubSub, "timer:#{lobby.id}")
+
     lobby =
       lobby
       |> Map.put_new(:scores, %{})
@@ -158,7 +160,15 @@ defmodule FirstAppWeb.LobbyServer do
     end
   end
 
-  def handle_cast(:determine_winner, state) do
+  def handle_info({:timer_flag, false}, state) do
+    Logger.info("⏹️ Timer finished for lobby #{state.id}, determining winner...")
+    # Trigger your existing winner logic
+    GenServer.cast(self(), :stop_timer)
+    {:noreply, state}
+  end
+
+  # def handle_cast(:determine_winner, state) do
+  def handle_cast(:stop_timer, state) do
     left = state.leftPlayer
     right = state.rightPlayer
 
