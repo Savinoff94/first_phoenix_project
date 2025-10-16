@@ -2,6 +2,8 @@ defmodule FirstAppWeb.LobbyLive.Show do
   use FirstAppWeb, :live_view
   alias FirstAppWeb.{LobbiesManager, LobbyServer, Presence}
   alias Phoenix.PubSub
+  import FirstAppWeb.UI
+
 
   def mount(%{"id" => lobby_id, "role" => role}, session, socket) do
     topic = "lobby:#{lobby_id}"
@@ -99,102 +101,79 @@ defmodule FirstAppWeb.LobbyLive.Show do
   def render(assigns) do
     ~H"""
     <div id="lobby" class="p-4">
-      <h1 class="text-xl font-bold mb-2">Lobby: <%= @lobby_id %></h1>
-      <h2 class="mb-2">Current user: <strong><%= @login %></strong></h2>
+      <h2 class="mb-2">Good luck: <strong><%= @login %></strong></h2>
       <h2 class="mb-4">Host: <strong><%= @host %></strong></h2>
 
       <!-- Timer display -->
-      <div class="mb-4 text-center">
-        <%= if @timer_running do %>
-          <p class="text-lg font-semibold text-green-600">⏱️ Round in progress: <%= @tick %>s</p>
-        <% else %>
-          <p class="text-lg font-semibold text-gray-500">🕒 Waiting for next round</p>
-        <% end %>
-      </div>
+      <div class="flex flex-col mt-20 h-fit items-center">
+        <div class="mb-4 text-center">
+          <%= if @timer_running do %>
+            <p class="text-lg font-semibold text-green-600">⏱️ Round in progress: <%= 5 - @tick %>s</p>
+          <% else %>
+            <p class="text-lg font-semibold text-gray-500">🕒 Waiting for next round</p>
+          <% end %>
+        </div>
 
-      <div class="border rounded p-3 mb-4 bg-gray-50">
-        <h3 class="font-semibold mb-2">Current Pair:</h3>
+        <div class="rounded p-3 mb-4 bg-gray-50 h-full">
+          <div class="grid grid-cols-2 gap-4 text-center h-full">
+            <.player_card
+              player={@leftPlayer}
+              login={@login}
+              timer_running={@timer_running}
+              side="left"
+            />
 
-        <div class="grid grid-cols-2 gap-4 text-center">
-          <div class="p-2 border rounded">
-            <h4 class="font-bold">Left Player</h4>
-            <p><%= if @leftPlayer, do: @leftPlayer.login, else: "Waiting..." %></p>
-            <p class="text-gray-600 italic">
-              Choice: <%= if @leftPlayer, do: @leftPlayer.selected || "-", else: "-" %>
-            </p>
-
-            <%= if @leftPlayer && @login == @leftPlayer.login do %>
-              <div class="mt-2 flex justify-center gap-2">
-                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Rock"
-                  class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">🪨 Rock</button>
-                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Paper"
-                  class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">📄 Paper</button>
-                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Scissors"
-                  class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">✂️ Scissors</button>
-              </div>
-            <% end %>
-          </div>
-
-          <div class="p-2 border rounded">
-            <h4 class="font-bold">Right Player</h4>
-            <p><%= if @rightPlayer, do: @rightPlayer.login, else: "Waiting..." %></p>
-            <p class="text-gray-600 italic">
-              Choice: <%= if @rightPlayer, do: @rightPlayer.selected || "-", else: "-" %>
-            </p>
-
-            <%= if @rightPlayer && @login == @rightPlayer.login do %>
-              <div class="mt-2 flex justify-center gap-2">
-                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Rock"
-                  class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">🪨 Rock</button>
-                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Paper"
-                  class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">📄 Paper</button>
-                <button phx-click="player_select" disabled={!@timer_running} phx-value-choice="Scissors"
-                  class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">✂️ Scissors</button>
-              </div>
-            <% end %>
+            <.player_card
+              player={@rightPlayer}
+              login={@login}
+              timer_running={@timer_running}
+              side="right"
+            />
           </div>
         </div>
-      </div>
 
-      <ul>
-        <%= for {login, %{score: score}} <- @scores do %>
-          <li><%= login %> — <%= score %> points</li>
-        <% end %>
-      </ul>
-
-      <%= if @login == @host do %>
-        <div class="mt-4 flex gap-2">
-          <button phx-click="start_timer" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Start</button>
-          <button class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Stop</button>
-          <button
-            phx-click="arrange_pair"
-            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            🔁 Next Round
-          </button>
-        </div>
-      <% end %>
-
-      <%= if @gameOverModalShow? do %>
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg shadow-lg p-6 w-80 text-center">
-            <h2 class="text-xl font-bold mb-4">🎉 Game Over!</h2>
-
-            <%= if @winner == "draw" do %>
-              <p class="text-lg text-gray-700 mb-4">It's a draw!</p>
-            <% else %>
-              <p class="text-lg text-green-600 font-semibold mb-4">Winner: <%= @winner %></p>
-            <% end %>
-
+        <%= if @login == @host do %>
+          <div class="mt-4 flex gap-2">
+            <button phx-click="start_timer" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Start</button>
+            <button class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Stop</button>
             <button
-              phx-click="close_modal"
+              phx-click="arrange_pair"
               class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
-              OK
+              🔁 Next Round
             </button>
           </div>
-        </div>
-      <% end %>
+        <% end %>
+
+        <ul>
+          <%= for {login, %{score: score}} <- @scores do %>
+            <li><%= login %> — <%= score %> points</li>
+          <% end %>
+        </ul>
+
+
+
+        <%= if @gameOverModalShow? do %>
+          <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-lg p-6 w-80 text-center">
+              <h2 class="text-xl font-bold mb-4">🎉 Game Over!</h2>
+
+              <%= if @winner == "draw" do %>
+                <p class="text-lg text-gray-700 mb-4">It's a draw!</p>
+              <% else %>
+                <p class="text-lg text-green-600 font-semibold mb-4">Winner: <%= @winner %></p>
+              <% end %>
+
+              <button
+                phx-click="close_modal"
+                class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        <% end %>
+      </div>
     </div>
     """
   end

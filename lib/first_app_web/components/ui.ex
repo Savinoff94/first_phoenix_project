@@ -1,5 +1,6 @@
 defmodule FirstAppWeb.UI do
   use Phoenix.Component
+  use FirstAppWeb, :verified_routes
 
   def table_header_col(assigns) do
     ~H"""
@@ -41,6 +42,90 @@ defmodule FirstAppWeb.UI do
     <td class="px-6 py-3">
       <%= render_slot(@inner_block) %>
     </td>
+    """
+  end
+
+  # Props
+  attr :player, :map, default: nil
+  attr :login, :string, required: true
+  attr :timer_running, :boolean, default: false
+  attr :side, :string, values: ["left", "right"], default: "left"
+
+  def player_card(assigns) do
+    ~H"""
+    <div
+      class={[
+        "p-2 rounded min-h-[100px] w-[250px] h-full flex flex-col",
+      ]}
+    >
+      <div
+        class={[
+          "flex h-full gap-2",
+          if(@side == "right", do: "flex-row-reverse")
+        ]}
+      >
+        <%= if @player && @login == @player.login do %>
+          <div class="mt-2 flex flex-col justify-center gap-2">
+            <%= for {emoji, label} <- [{"🪨", "Rock"}, {"📄", "Paper"}, {"✂️", "Scissors"}] do %>
+              <button
+                phx-click="player_select"
+                phx-value-choice={label}
+                disabled={!@timer_running}
+                class={[
+                  "px-3 py-2 rounded transition",
+                  @timer_running && "bg-gray-200 hover:bg-gray-300" || "bg-gray-100 opacity-60 cursor-not-allowed"
+                ]}
+              >
+                <%= emoji %> <%= label %>
+              </button>
+            <% end %>
+          </div>
+        <% end %>
+
+        <p class="text-gray-600 italic flex justify-center items-center w-full h-full text-2xl relative">
+          <img
+            src={~p"/images/rock.svg"}
+            width="72"
+            class={[
+              "absolute transition-opacity",
+              @player && @player.selected == "Rock" && "block" || "hidden"
+            ]}
+          />
+          <img
+            src={~p"/images/paper.svg"}
+            width="72"
+            class={[
+              "absolute transition-opacity",
+              @player && @player.selected == "Paper" && "block" || "hidden"
+            ]}
+          />
+          <img
+            src={~p"/images/scissors.svg"}
+            width="72"
+            class={[
+              "absolute transition-opacity",
+              @player && @player.selected == "Scissors" && "block" || "hidden"
+            ]}
+          />
+          <img
+            src={~p"/images/user.svg"}
+            width="72"
+            class={[
+              "absolute text-gray-400",
+              @player && @player.selected in ["Rock", "Paper", "Scissors"] && "hidden" || "block"
+            ]}
+          />
+        </p>
+      </div>
+
+      <p class="mt-2 text-center font-medium">
+        <%= cond do
+          is_nil(@player) -> "Waiting..."
+          @player.login == @login -> "You"
+          true -> @player.login
+        end %>
+      </p>
+    </div>
     """
   end
 
