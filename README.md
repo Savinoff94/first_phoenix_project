@@ -5,7 +5,7 @@ To get a local copy up and running, run:
 git clone git@github.com:Savinoff94/first_phoenix_project.git
 cd first_app
 
-```markdown
+```
 
 # FirstApp
 
