@@ -145,9 +145,19 @@ defmodule FirstAppWeb.LobbyLive.Show do
           </div>
         <% end %>
 
-        <ul>
+        <ul class="mt-6">
+          <h3 class="text-center text-lg font-semibold text-gray-700 mb-3">
+            🏆 Lobby Leaders
+          </h3>
           <%= for {login, %{score: score}} <- @scores do %>
-            <li><%= login %> — <%= score %> points</li>
+            <li
+              class="flex justify-between items-center py-1.5 px-2 border-b border-gray-200 last:border-0"
+            >
+              <span class="font-medium text-gray-800"><%= login %></span>
+              <span class="text-sm text-gray-600">
+                <%= score %> <%= if score == 1, do: "point", else: "points" %>
+              </span>
+            </li>
           <% end %>
         </ul>
 
@@ -158,10 +168,17 @@ defmodule FirstAppWeb.LobbyLive.Show do
             <div class="bg-white rounded-lg shadow-lg p-6 w-80 text-center">
               <h2 class="text-xl font-bold mb-4">🎉 Game Over!</h2>
 
-              <%= if @winner == "draw" do %>
-                <p class="text-lg text-gray-700 mb-4">It's a draw!</p>
-              <% else %>
-                <p class="text-lg text-green-600 font-semibold mb-4">Winner: <%= @winner %></p>
+              <%= cond do %>
+                <% @winner == "draw" -> %>
+                  <p class="text-lg text-gray-700 mb-4">It's a draw!</p>
+
+                <% @winner == @login -> %>
+                  <p class="text-lg text-green-700 font-bold mb-4 animate-bounce">You are the winner!</p>
+
+                <% true -> %>
+                  <p class="text-lg text-green-600 font-semibold mb-4">
+                    Winner: <%= @winner %>
+                  </p>
               <% end %>
 
               <button
