@@ -12,7 +12,11 @@ defmodule FirstAppWeb.LobbyLive.Show do
     if connected?(socket) do
       PubSub.subscribe(FirstApp.PubSub, topic)
       LobbiesManager.add_user(lobby_id, login, role)
-      LobbyServer.add_player(lobby_id, login)
+      if role != "spectator" do
+        LobbyServer.add_player(lobby_id, login)
+      else
+        LobbyServer.broadcast_state(lobby_id)
+      end
     end
 
     host = LobbyServer.get_host(lobby_id) || ""
@@ -121,6 +125,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
               player={@leftPlayer}
               login={@login}
               timer_running={@timer_running}
+              role={@role}
               side="left"
             />
 
@@ -128,6 +133,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
               player={@rightPlayer}
               login={@login}
               timer_running={@timer_running}
+              role={@role}
               side="right"
             />
           </div>
@@ -201,7 +207,9 @@ defmodule FirstAppWeb.LobbyLive.Show do
     login = socket.assigns.login
     lobby_id = socket.assigns.lobby_id
     LobbiesManager.remove_user(lobby_id, login, role)
-    LobbyServer.remove_player(lobby_id, login)
+    if role != "spectator" do
+      LobbyServer.remove_player(lobby_id, login)
+    end
     IO.inspect(socket, label: "player left terminate", pretty: true)
     # TODO if host leaves stop game
     :ok

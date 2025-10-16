@@ -50,6 +50,7 @@ defmodule FirstAppWeb.UI do
   attr :login, :string, required: true
   attr :timer_running, :boolean, default: false
   attr :side, :string, values: ["left", "right"], default: "left"
+  attr :role, :string, values: ["player", "spectator"]
 
   def player_card(assigns) do
     ~H"""
@@ -88,7 +89,7 @@ defmodule FirstAppWeb.UI do
             width="72"
             class={[
               "absolute transition-opacity",
-              is_allowed_to_see(@player, @login, @timer_running) && @player && @player.selected == "Rock" && "block" || "hidden"
+              is_allowed_to_see(@player, @login, @timer_running, @role) && @player && @player.selected == "Rock" && "block" || "hidden"
             ]}
           />
           <img
@@ -96,7 +97,7 @@ defmodule FirstAppWeb.UI do
             width="72"
             class={[
               "absolute transition-opacity",
-              is_allowed_to_see(@player, @login, @timer_running) && @player && @player.selected == "Paper" && "block" || "hidden"
+              is_allowed_to_see(@player, @login, @timer_running, @role) && @player && @player.selected == "Paper" && "block" || "hidden"
             ]}
           />
           <img
@@ -104,7 +105,7 @@ defmodule FirstAppWeb.UI do
             width="72"
             class={[
               "absolute transition-opacity",
-              is_allowed_to_see(@player, @login, @timer_running) && @player && @player.selected == "Scissors" && "block" || "hidden"
+              is_allowed_to_see(@player, @login, @timer_running, @role) && @player && @player.selected == "Scissors" && "block" || "hidden"
             ]}
           />
           <img
@@ -112,7 +113,7 @@ defmodule FirstAppWeb.UI do
             width="72"
             class={[
               "absolute text-gray-400",
-              is_allowed_to_see(@player, @login, @timer_running) && @player && @player.selected in ["Rock", "Paper", "Scissors"] && "hidden" || "block"
+              is_allowed_to_see(@player, @login, @timer_running, @role) && @player && @player.selected in ["Rock", "Paper", "Scissors"] && "hidden" || "block"
             ]}
           />
         </p>
@@ -129,8 +130,11 @@ defmodule FirstAppWeb.UI do
     """
   end
 
-  def is_allowed_to_see(player, login, timer_running) do
+  def is_allowed_to_see(player, login, timer_running, role) do
     cond do
+      role == "spectator" ->
+        true
+
       is_nil(player) ->
         false
 
