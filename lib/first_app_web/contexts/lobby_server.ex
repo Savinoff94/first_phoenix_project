@@ -139,8 +139,8 @@ defmodule FirstAppWeb.LobbyServer do
 
         new_state = %{
           state
-          | leftPlayer: %{login: first, selected: ""},
-            rightPlayer: %{login: second, selected: ""}
+          | leftPlayer: %{login: first, selected: "Rock"},
+            rightPlayer: %{login: second, selected: "Rock"}
         }
 
         Logger.info("initial pair arranged")
@@ -267,7 +267,7 @@ defmodule FirstAppWeb.LobbyServer do
     if is_nil(left_login) or left_login != winner do
       new_login = next_player(order, [left_login, right_login])
       if new_login do
-        %{state | leftPlayer: %{login: new_login, selected: ""}}
+        %{state | leftPlayer: %{login: new_login, selected: "Rock"}}
       else
         state
       end
@@ -283,7 +283,7 @@ defmodule FirstAppWeb.LobbyServer do
     if is_nil(right_login) or right_login != winner do
       new_login = next_player(order, [left_login, right_login])
       if new_login do
-        %{state | rightPlayer: %{login: new_login, selected: ""}}
+        %{state | rightPlayer: %{login: new_login, selected: "Rock"}}
       else
         state
       end
