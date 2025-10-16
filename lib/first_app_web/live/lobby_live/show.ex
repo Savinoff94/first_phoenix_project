@@ -141,8 +141,19 @@ defmodule FirstAppWeb.LobbyLive.Show do
 
         <%= if @login == @host do %>
           <div class="mt-4 flex gap-2">
-            <button phx-click="start_timer" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Start</button>
-            <button class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Stop</button>
+            <button
+              phx-click="start_timer"
+              class={[
+                "px-4 py-2 text-white rounded transition",
+                if(@leftPlayer && @rightPlayer,
+                  do: "bg-green-500 hover:bg-green-600",
+                  else: "bg-gray-400 cursor-not-allowed opacity-60"
+                )
+              ]}
+              disabled={is_nil(@leftPlayer) or is_nil(@rightPlayer)}
+            >
+              Start
+            </button>
             <button
               phx-click="arrange_pair"
               class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -211,7 +222,6 @@ defmodule FirstAppWeb.LobbyLive.Show do
       LobbyServer.remove_player(lobby_id, login)
     end
     IO.inspect(socket, label: "player left terminate", pretty: true)
-    # TODO if host leaves stop game
     :ok
   end
 
