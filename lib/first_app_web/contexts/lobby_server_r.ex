@@ -1,8 +1,8 @@
 defmodule FirstAppWeb.LobbyServer do
   use GenServer
   alias Phoenix.PubSub
-  alias FirstAppWeb.RPS
   alias FirstAppWeb.LinkedList
+  alias FirstAppWeb.GameEngine
   require Logger
 
   @round_time 3_000
@@ -24,8 +24,10 @@ defmodule FirstAppWeb.LobbyServer do
   end
 
   def player_enter(id, login), do: GenServer.cast(via_tuple(id), {:player_enter, login})
+  def player_leave(id, login), do: GenServer.cast(via_tuple(id), {:player_leave, login})
 
   defp broadcast_state_full(state) do
+    Logger.debug(inspect(state, pretty: true))
     PubSub.broadcast(FirstApp.PubSub, "lobby:#{state.id}", {:lobby_state_updated, state})
   end
 
@@ -90,6 +92,25 @@ defmodule FirstAppWeb.LobbyServer do
     {:noreply, new_state}
   end
 
+  # player leaves lobby
+  def handle_cast({:player_leave, login}, state) do
+    new_state =
+      state
+      |> Map.update(:playersOnline, [], fn players ->
+        Enum.reject(players, &(&1 == login))
+      end)
+
+    GameEngine.dispatch(state.id, :player_leave, %{login: login})
+
+    Logger.info("Player #{login} left lobby")
+
+    broadcast_state_full(new_state)
+    {:noreply, new_state}
+  end
 
 
+  def handle_info({:game_updated, _game}, state) do
+    Logger.debug("Ignoring :game_updated event for now")
+    {:noreply, state}
+  end
 end

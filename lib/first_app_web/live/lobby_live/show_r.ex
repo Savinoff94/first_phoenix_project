@@ -8,7 +8,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
 
   @impl true
   def mount(%{"id" => lobby_id, "role" => role}, session, socket) do
-    player_login = session["login"]
+    login = session["login"]
     host = nil
 
     if connected?(socket) do
@@ -17,9 +17,9 @@ defmodule FirstAppWeb.LobbyLive.Show do
       PubSub.subscribe(FirstApp.PubSub, "game:#{lobby_id}")
       PubSub.subscribe(FirstApp.PubSub, "timer:#{lobby_id}")
 
-      LobbiesManager.add_user(lobby_id, player_login, role)
+      LobbiesManager.add_user(lobby_id, login, role)
       if role != "spectator" do
-        LobbyServer.player_enter(lobby_id, player_login)
+        LobbyServer.player_enter(lobby_id, login)
       else
         LobbyServer.broadcast_state(lobby_id)
       end
@@ -29,10 +29,13 @@ defmodule FirstAppWeb.LobbyLive.Show do
     {:ok,
     assign(socket,
       lobby_id: lobby_id,
+      role: role,
       host: host,
-      player_login: player_login,
+      login: login,
       scores: [],
-      playersOnline: []
+      playersOnline: [],
+      leftPlayer: nil,
+      rightPlayer: nil
     )}
   end
 
@@ -41,10 +44,18 @@ defmodule FirstAppWeb.LobbyLive.Show do
 
     {:noreply,
      assign(socket,
-        #  TODO leftPlayer RightPlayer from Game Engine
         scores: state.scores,
         host: state.host,
         playersOnline: state.playersOnline
+    )}
+  end
+  # game state updated
+  def handle_info({:game_updated, state}, socket) do
+
+    {:noreply,
+     assign(socket,
+      leftPlayer: state.leftPlayer,
+      rightPlayer: state.rightPlayer
     )}
   end
 
@@ -64,7 +75,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
           <%= for player <- @playersOnline do %>
             <li class={[
               "font-medium",
-              player == @player_login && "text-green-600 font-bold"
+              player == @login && "text-green-600 font-bold"
             ]}>
               <%= player %>
               <%= if player == @host do %>
@@ -95,7 +106,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
               <tr class="border-t border-gray-300">
                 <td class="px-4 py-2">
                   <%= player %>
-                  <%= if player == @player_login do %>
+                  <%= if player == @login do %>
                     <span class="text-xs text-green-600">(you)</span>
                   <% end %>
                 </td>
@@ -108,6 +119,18 @@ defmodule FirstAppWeb.LobbyLive.Show do
     </div>
 
     """
+  end
+
+  def terminate(reason, socket) do
+    role = socket.assigns.role
+    login = socket.assigns.login
+    lobby_id = socket.assigns.lobby_id
+    LobbiesManager.remove_user(lobby_id, login, role)
+    if role != "spectator" do
+      LobbyServer.player_leave(lobby_id, login)
+    end
+    IO.inspect(socket, label: "player left terminate", pretty: true)
+    :ok
   end
 
 end

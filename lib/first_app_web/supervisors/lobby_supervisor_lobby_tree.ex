@@ -15,7 +15,7 @@ defmodule FirstAppWeb.LobbySupervisor.LobbyTree do
 
     children = [
       {FirstAppWeb.LobbyServer, lobby},
-      {RPS.GameEngine, lobby_id: lobby_id},
+      {FirstAppWeb.GameEngine, lobby_id: lobby_id},
       {FirstAppWeb.TimerWorker, lobby_id: lobby_id, seconds: 5}
     ]
 
