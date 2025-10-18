@@ -1,4 +1,4 @@
-defmodule FirstAppWeb.TimerWorker do
+defmodule FirstAppWeb.TimerWorker_prev do
   use GenServer
   alias Phoenix.PubSub
 

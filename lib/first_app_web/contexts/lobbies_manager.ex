@@ -59,10 +59,15 @@ defmodule FirstAppWeb.LobbiesManager do
 
     lobby = Map.merge(base, attrs)
 
-    {:ok, _pid} = DynamicSupervisor.start_child(FirstAppWeb.LobbySupervisor, {FirstAppWeb.LobbyServer, lobby})
-    PubSub.broadcast(FirstApp.PubSub, @topic, {:lobby_created, lobby})
+    case FirstAppWeb.LobbySupervisor.start_lobby(lobby) do
+      {:ok, _pid} ->
+        PubSub.broadcast(FirstApp.PubSub, @topic, {:lobby_created, lobby})
 
-    {:reply, {:ok, lobby}, Map.put(state, id, lobby)}
+        {:reply, {:ok, lobby}, Map.put(state, id, lobby)}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
   end
 
   # get lobby

@@ -1,4 +1,4 @@
-defmodule FirstAppWeb.LobbyServer do
+defmodule FirstAppWeb.LobbyServer_prev do
   use GenServer
   alias Phoenix.PubSub
   alias FirstAppWeb.RPS

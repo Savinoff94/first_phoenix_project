@@ -1,6 +1,6 @@
-defmodule FirstAppWeb.LobbyLive.Show do
+defmodule FirstAppWeb.LobbyLive.Show_prev do
   use FirstAppWeb, :live_view
-  alias FirstAppWeb.{LobbiesManager, LobbyServer, Presence}
+  alias FirstAppWeb.{LobbiesManager, LobbyServer}
   alias Phoenix.PubSub
   import FirstAppWeb.UI
 
@@ -88,7 +88,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
     )}
   end
 
-  def handle_info({:timer_flag, true}, socket) do
+  def handle_info({:timer_start_flag, true}, socket) do
     {:noreply, assign(socket, timer_running: true, tick: 0)}
   end
 
@@ -96,8 +96,8 @@ defmodule FirstAppWeb.LobbyLive.Show do
     {:noreply, assign(socket, tick: n)}
   end
 
-  def handle_info({:timer_flag, false}, socket) do
-    IO.puts(":timer_flag")
+  def handle_info({:timer_start_flag, false}, socket) do
+    IO.puts(":timer_start_flag")
     # lobby_id = socket.assigns.lobby_id
     # LobbyServer.determine_winner(lobby_id)
     {:noreply, assign(socket, timer_running: false)}
