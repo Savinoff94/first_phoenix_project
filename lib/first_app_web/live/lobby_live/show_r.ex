@@ -4,7 +4,9 @@ defmodule FirstAppWeb.LobbyLive.Show do
   alias Phoenix.PubSub
   alias FirstAppWeb.LobbyServer
   alias FirstAppWeb.LobbiesManager
-  alias RPS.GameEngine
+  alias FirstAppWeb.GameEngine
+  import FirstAppWeb.UI
+
 
   @impl true
   def mount(%{"id" => lobby_id, "role" => role}, session, socket) do
@@ -35,8 +37,14 @@ defmodule FirstAppWeb.LobbyLive.Show do
       scores: [],
       playersOnline: [],
       leftPlayer: nil,
-      rightPlayer: nil
+      rightPlayer: nil,
+      gameTimer: false
     )}
+  end
+
+  def handle_event("suggest_start_game", _params, socket) do
+    GameEngine.dispatch(socket.assigns.lobby_id, :suggest_start_game, %{})
+    {:noreply, socket}
   end
 
   # lobby state updated
@@ -63,6 +71,44 @@ defmodule FirstAppWeb.LobbyLive.Show do
     ~H"""
     <div>{assigns.lobby_id}</div>
     <div>{assigns.host}</div>
+
+    <div class="rounded p-3 mb-4 bg-gray-50 h-full">
+      <div class="grid grid-cols-2 gap-4 text-center h-full">
+        <.player_card
+          player={@leftPlayer}
+          login={@login}
+          timer_running={@gameTimer}
+          role={@role}
+          side="left"
+        />
+
+        <.player_card
+          player={@rightPlayer}
+          login={@login}
+          timer_running={@gameTimer}
+          role={@role}
+          side="right"
+        />
+      </div>
+    </div>
+
+    <%= if @login == @host do %>
+      <div class="mt-4 flex gap-2">
+        <button
+          phx-click="suggest_start_game"
+          class={[
+            "px-4 py-2 text-white rounded transition",
+            if(length(@playersOnline) > 1,
+              do: "bg-green-500 hover:bg-green-600",
+              else: "bg-gray-400 cursor-not-allowed opacity-60"
+            )
+          ]}
+          disabled={length(@playersOnline) < 2}
+        >
+          Start
+        </button>
+      </div>
+    <% end %>
 
     <!-- Players Online -->
     <div class="p-4 bg-blue-50 rounded-lg">

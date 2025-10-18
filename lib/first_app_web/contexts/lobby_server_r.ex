@@ -5,8 +5,6 @@ defmodule FirstAppWeb.LobbyServer do
   alias FirstAppWeb.GameEngine
   require Logger
 
-  @round_time 3_000
-
   # -----------------------------
   #  PUBLIC API
   # -----------------------------
