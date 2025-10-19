@@ -1,7 +1,7 @@
 defmodule FirstAppWeb.TimerWorker do
   use GenServer
   alias Phoenix.PubSub
-  alias RPS.GameEngine
+  alias FirstAppWeb.GameEngine
 
   # -----------------------------
   #  PUBLIC API

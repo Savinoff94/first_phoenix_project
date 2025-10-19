@@ -201,4 +201,71 @@ defmodule FirstAppWeb.GameEngine do
     TimerWorker.stop_timer(state.lobby_id)
     state
   end
+
+  defp process_event(:arrange_pair_on_ready, %{lobby_id: lobby_id}, state) do
+    players_online = FirstAppWeb.LobbyServer.get_players_online(state.lobby_id)
+    game = state.game
+
+    # 1️⃣ Split current players into ready and not ready
+    ready_players =
+      [game.leftPlayer, game.rightPlayer]
+      |> Enum.filter(& &1.ready)
+      |> Enum.map(& &1.login)
+
+    not_ready_players =
+      [game.leftPlayer, game.rightPlayer]
+      |> Enum.filter(& !&1.ready)
+      |> Enum.map(& &1.login)
+
+    Logger.debug("✅ Ready players: #{inspect(ready_players)}")
+    Logger.debug("❌ Not ready players: #{inspect(not_ready_players)}")
+
+    # 2️⃣ Determine who is available to replace (those online but not currently playing)
+    replacements = players_online -- not_ready_players -- ready_players
+    Logger.debug("🧩 Replacement pool: #{inspect(replacements)}")
+
+    cond do
+      # 3️⃣ Enough replacements to continue
+      length(replacements) >= length(not_ready_players) ->
+        # pick exactly as many new players as needed
+        {new_left, new_right} =
+          case {Enum.member?(ready_players, game.leftPlayer.login),
+                Enum.member?(ready_players, game.rightPlayer.login)} do
+            {true, true} ->
+              {game.leftPlayer.login, game.rightPlayer.login}
+
+            {true, false} ->
+              [new_right | _] = replacements
+              {game.leftPlayer.login, new_right}
+
+            {false, true} ->
+              [new_left | _] = replacements
+              {new_left, game.rightPlayer.login}
+
+            {false, false} ->
+              [new_left, new_right | _] = replacements
+              {new_left, new_right}
+          end
+
+        new_game = %{
+          game
+          | leftPlayer: %{login: new_left, selected: "Rock", ready: false},
+            rightPlayer: %{login: new_right, selected: "Rock", ready: false},
+            winner: nil
+        }
+
+        Logger.info("🔁 Pair arranged: #{new_left} vs #{new_right}")
+
+        # ✅ Use full new state for next dispatch
+        new_state = %{state | game: new_game}
+        dispatch(state.lobby_id, :player_ready_check, new_state)
+        new_state
+
+      # 4️⃣ Not enough players — stop game
+      true ->
+        Logger.warning("🛑 Not enough replacements — stopping game for lobby #{state.lobby_id}")
+        dispatch(state.lobby_id, :stop_engine, state)
+        state
+    end
+  end
 end
