@@ -29,6 +29,10 @@ defmodule FirstAppWeb.LobbyServer do
     PubSub.broadcast(FirstApp.PubSub, "lobby:#{state.id}", {:lobby_state_updated, state})
   end
 
+  def broadcast_state(id) do
+    GenServer.cast(via_tuple(id), :broadcast_state)
+  end
+
   def add_score(lobby_id, login) do
     GenServer.cast(via_tuple(lobby_id), {:add_score, login})
   end
@@ -107,6 +111,12 @@ defmodule FirstAppWeb.LobbyServer do
 
     broadcast_state_full(new_state)
     {:noreply, new_state}
+  end
+
+  # broadcast state
+  def handle_cast(:broadcast_state, state) do
+    broadcast_state_full(state)
+    {:noreply, state}
   end
 
   def handle_cast({:add_score, login}, state) do

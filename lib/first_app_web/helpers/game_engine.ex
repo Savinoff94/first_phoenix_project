@@ -31,7 +31,8 @@ defmodule FirstAppWeb.GameEngine do
        game: %{
         leftPlayer: nil,
         rightPlayer: nil,
-        winner: nil
+        winner: nil,
+        in_the_loop: false
       }
      }}
   end
@@ -68,12 +69,15 @@ defmodule FirstAppWeb.GameEngine do
 
     if length(players_online) < 2 do
       Logger.debug("Not enough players to start game (#{length(players_online)}) — ignoring")
-      state
+
+      new_game = Map.put(state.game, :in_the_loop, false)
+      %{state | game: new_game}
     else
       Logger.info("Enough players to start game (#{length(players_online)})")
 
       # 1️⃣ Reset winner in game state
       new_game = Map.put(state.game, :winner, nil)
+      new_game = Map.put(state.game, :in_the_loop, true)
       new_state = %{state | game: new_game}
 
       # 2️⃣ Dispatch to arrange new pair
@@ -286,7 +290,8 @@ defmodule FirstAppWeb.GameEngine do
       state.game
       | leftPlayer: nil,
         rightPlayer: nil,
-        winner: nil
+        winner: nil,
+        in_the_loop: false
     }
 
     Logger.info("Game stopped for lobby #{state.lobby_id}")

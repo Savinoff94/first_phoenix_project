@@ -41,6 +41,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
       roundTimer: false,
       readyTimer: false,
       winner: nil,
+      in_the_loop: false,
       tick: 0
     )}
   end
@@ -74,7 +75,8 @@ defmodule FirstAppWeb.LobbyLive.Show do
      assign(socket,
       leftPlayer: state.leftPlayer,
       rightPlayer: state.rightPlayer,
-      winner: state.winner
+      winner: state.winner,
+      in_the_loop: state.in_the_loop
     )}
   end
 
@@ -163,7 +165,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
               else: "bg-gray-400 cursor-not-allowed opacity-60"
             )
           ]}
-          disabled={length(@playersOnline) < 2}
+          disabled={length(@playersOnline) < 2 or @in_the_loop}
         >
           Start
         </button>
@@ -281,6 +283,16 @@ defmodule FirstAppWeb.LobbyLive.Show do
     if role != "spectator" do
       LobbyServer.player_leave(lobby_id, login)
     end
+
+    if socket.assigns.in_the_loop and (
+        (socket.assigns.leftPlayer && socket.assigns.leftPlayer.login == login) or
+        (socket.assigns.rightPlayer && socket.assigns.rightPlayer.login == login)
+      ) do
+      Logger.info("🔁 #{login} left mid-round — restarting game automatically")
+      GameEngine.dispatch(lobby_id, :suggest_start_game, %{})
+    end
+
+
     IO.inspect(socket, label: "player left terminate", pretty: true)
     :ok
   end
