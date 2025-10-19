@@ -29,6 +29,10 @@ defmodule FirstAppWeb.LobbyServer do
     PubSub.broadcast(FirstApp.PubSub, "lobby:#{state.id}", {:lobby_state_updated, state})
   end
 
+  def add_score(lobby_id, login) do
+    GenServer.cast(via_tuple(lobby_id), {:add_score, login})
+  end
+
   # -----------------------------
   #  CALLBACKS
   # -----------------------------
@@ -105,9 +109,38 @@ defmodule FirstAppWeb.LobbyServer do
     {:noreply, new_state}
   end
 
+  def handle_cast({:add_score, login}, state) do
+    new_scores =
+      state.scores
+      |> update_or_insert_score(login)
+      |> Enum.sort_by(& &1.score, :desc)
+
+    new_state = %{state | scores: new_scores}
+
+    broadcast_state_full(new_state)
+
+    Logger.info("🏆 Updated scores in lobby #{state.id}: #{inspect(new_scores)}")
+    {:noreply, new_state}
+  end
+
 
   def handle_info({:game_updated, _game}, state) do
     Logger.debug("Ignoring :game_updated event for now")
     {:noreply, state}
+  end
+
+  defp update_or_insert_score(scores, login) do
+    case Enum.find(scores, &(&1.login == login)) do
+      # Existing player → increment score
+      %{score: score} = existing ->
+        Enum.map(scores, fn
+          ^existing -> %{login: login, score: score + 1}
+          other -> other
+        end)
+
+      # New player → insert with score 1
+      nil ->
+        [%{login: login, score: 1} | scores]
+    end
   end
 end

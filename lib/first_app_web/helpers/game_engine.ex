@@ -163,7 +163,6 @@ defmodule FirstAppWeb.GameEngine do
 
   defp process_event(:player_ready_check, _params, state) do
     TimerWorker.start_timer(state.lobby_id, 10, :arrange_pair_on_ready)
-    PubSub.broadcast(FirstApp.PubSub, state.topic, {:player_ready_check})
     state
   end
 
@@ -199,6 +198,7 @@ defmodule FirstAppWeb.GameEngine do
 
   defp process_event(:both_players_ready, _params, state) do
     TimerWorker.stop_timer(state.lobby_id)
+    dispatch(state.lobby_id, :start_round, state)
     state
   end
 
@@ -282,5 +282,62 @@ defmodule FirstAppWeb.GameEngine do
 
     Logger.info("Game stopped for lobby #{state.lobby_id}")
     %{state | game: new_game}
+  end
+
+  defp process_event(:start_round, _params, state) do
+    TimerWorker.start_timer(state.lobby_id, 10, :evaluate_winner)
+
+    Logger.info("round started")
+    state
+  end
+
+  defp process_event(:player_made_choice, %{login: login, choice: choice}, state) do
+    updated_game =
+      cond do
+        state.game.leftPlayer && state.game.leftPlayer.login == login ->
+          put_in(state.game, [:leftPlayer, :selected], choice)
+
+        state.game.rightPlayer && state.game.rightPlayer.login == login ->
+          put_in(state.game, [:rightPlayer, :selected], choice)
+
+        true ->
+          state.game
+      end
+
+    %{state | game: updated_game}
+  end
+
+  defp process_event(:evaluate_winner, %{lobby_id: lobby_id}, state) do
+    left = state.game.leftPlayer
+    right = state.game.rightPlayer
+
+    cond do
+      # Not enough players
+      is_nil(left) or is_nil(right) ->
+        Logger.info("⏸️ Not enough players to determine winner")
+        state
+
+      # One or both players didn't choose
+      left.selected in [nil, ""] or right.selected in [nil, ""] ->
+        Logger.info("⏸️ One or both players did not make a selection")
+        state
+
+      # Both players made their choices
+      true ->
+        winner = RPS.determine_winner(left, right)
+        result = if winner, do: winner, else: "draw"
+
+        Logger.info("🏁 Winner determined: #{inspect(result)}")
+
+        dispatch(state.lobby_id, :finish_round, new_state)
+        PubSub.broadcast(FirstApp.PubSub, state.topic, {:winner, winner})
+        state
+    end
+  end
+
+  defp process_event(:finish_round, %{lobby_id: lobby_id}, state) do
+    winner = state.game.winner
+    LobbyServer.add_score(lobby_id, winner)
+    state
   end
 end

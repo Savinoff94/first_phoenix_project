@@ -69,7 +69,7 @@ defmodule FirstAppWeb.UI do
           <div class="mt-2 flex flex-col justify-center gap-2">
             <%= for {emoji, label} <- [{"🪨", "Rock"}, {"📄", "Paper"}, {"✂️", "Scissors"}] do %>
               <button
-                phx-click="player_select"
+                phx-click="player_made_choice"
                 phx-value-choice={label}
                 disabled={!@timer_running}
                 class={[

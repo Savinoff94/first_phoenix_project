@@ -38,8 +38,9 @@ defmodule FirstAppWeb.LobbyLive.Show do
       playersOnline: [],
       leftPlayer: nil,
       rightPlayer: nil,
-      gameTimer: false,
+      roundTimer: false,
       readyTimer: false,
+      winner: nil,
       tick: 0
     )}
   end
@@ -58,7 +59,6 @@ defmodule FirstAppWeb.LobbyLive.Show do
 
   # lobby state updated
   def handle_info({:lobby_state_updated, state}, socket) do
-
     {:noreply,
      assign(socket,
         scores: state.scores,
@@ -73,7 +73,16 @@ defmodule FirstAppWeb.LobbyLive.Show do
     {:noreply,
      assign(socket,
       leftPlayer: state.leftPlayer,
-      rightPlayer: state.rightPlayer
+      rightPlayer: state.rightPlayer,
+      winner: state.winner
+    )}
+  end
+  # winner updated
+  def handle_info({:winner, winner}, socket) do
+
+    {:noreply,
+     assign(socket,
+      winner: winner
     )}
   end
 
@@ -82,12 +91,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
     {:noreply, assign(socket, tick: n)}
   end
 
-  # open modal to check if player ready
-  def handle_info({:player_ready_check}, socket) do
-    # Do nothing, just ignore it
-    {:noreply, socket}
-  end
-
+  # modal where player approves that ready
   def handle_info({:timer_start_flag, flag, :arrange_pair_on_ready}, socket) do
     {:noreply, assign(socket, readyTimer: flag)}
   end
@@ -96,17 +100,46 @@ defmodule FirstAppWeb.LobbyLive.Show do
     {:noreply, socket}
   end
 
+  # round started
+  def handle_info({:timer_start_flag, flag, :evaluate_winner}, socket) do
+    {:noreply, assign(socket, roundTimer: flag)}
+  end
+
+
+  def handle_event("player_made_choice", %{"choice" => choice}, socket) do
+    login = socket.assigns.login
+    lobby_id = socket.assigns.lobby_id
+
+    GameEngine.dispatch(lobby_id, :player_made_choice, %{login: login, choice: choice})
+    {:noreply, socket}
+  end
+  def handle_event("close_winner_modal", _param, socket) do
+
+    {:noreply, assign(
+      socket,
+      winner: nil
+    )}
+  end
+
   def render(assigns) do
     ~H"""
     <div>{assigns.lobby_id}</div>
     <div>{assigns.host}</div>
+
+    <div class="mb-4 text-center">
+      <%= if @roundTimer do %>
+        <p class="text-lg font-semibold text-green-600">⏱️ Round in progress: <%= @tick %>s</p>
+      <% else %>
+        <p class="text-lg font-semibold text-gray-500">🕒 Waiting for next round</p>
+      <% end %>
+    </div>
 
     <div class="rounded p-3 mb-4 bg-gray-50 h-full">
       <div class="grid grid-cols-2 gap-4 text-center h-full">
         <.player_card
           player={@leftPlayer}
           login={@login}
-          timer_running={@gameTimer}
+          timer_running={@roundTimer}
           role={@role}
           side="left"
         />
@@ -114,7 +147,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
         <.player_card
           player={@rightPlayer}
           login={@login}
-          timer_running={@gameTimer}
+          timer_running={@roundTimer}
           role={@role}
           side="right"
         />
@@ -177,7 +210,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
             </tr>
           </thead>
           <tbody>
-            <%= for {player, score} <- @scores do %>
+            <%= for %{login: player, score: score} <- @scores do %>
               <tr class="border-t border-gray-300">
                 <td class="px-4 py-2">
                   <%= player %>
@@ -202,6 +235,34 @@ defmodule FirstAppWeb.LobbyLive.Show do
 
             <button
               phx-click="player_ready"
+              class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      <% end %>
+
+      <%= if @winner do %>
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-white rounded-lg shadow-lg p-6 w-80 text-center">
+            <h2 class="text-xl font-bold mb-4">🎉 Game Over!</h2>
+
+            <%= cond do %>
+              <% @winner == "draw" -> %>
+                <p class="text-lg text-gray-700 mb-4">It's a draw!</p>
+
+              <% @winner == @login -> %>
+                <p class="text-lg text-green-700 font-bold mb-4 animate-bounce">You are the winner!</p>
+
+              <% true -> %>
+                <p class="text-lg text-green-600 font-semibold mb-4">
+                  Winner: <%= @winner %>
+                </p>
+            <% end %>
+
+            <button
+              phx-click="close_winner_modal"
               class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             >
               OK
