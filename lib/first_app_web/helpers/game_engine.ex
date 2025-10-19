@@ -4,6 +4,7 @@ defmodule FirstAppWeb.GameEngine do
   alias FirstAppWeb.RPS
   alias FirstAppWeb.LinkedList
   alias FirstAppWeb.LobbyServer
+  alias FirstAppWeb.TimerWorker
   require Logger
 
   def start_link(opts) do
@@ -40,7 +41,7 @@ defmodule FirstAppWeb.GameEngine do
     new_state  = %{state | events: new_events}
     updated    = process_event(type, data, new_state)
 
-    PubSub.broadcast(FirstApp.PubSub, updated.topic, {:game_updated, updated.game})
+    PubSub.broadcast(FirstApp.PubSub, state.topic, {:game_updated, updated.game})
 
     {:noreply, updated}
   end
@@ -80,6 +81,7 @@ defmodule FirstAppWeb.GameEngine do
       length(players_online) == 2 and not is_nil(state.game.leftPlayer) and not is_nil(state.game.rightPlayer) ->
         Logger.debug("case 1: both slots filled")
 
+        dispatch(state.lobby_id, :player_ready_check, state)
         state
 
       # Case 2: both slots empty, can fill initial pair
@@ -98,6 +100,7 @@ defmodule FirstAppWeb.GameEngine do
         new_state = %{state | game: new_game}
         Logger.debug(inspect(new_state, pretty: true))
 
+        dispatch(state.lobby_id, :player_ready_check, state)
         new_state
 
       # Case 3: normal flow — one slot must be replaced after winner
@@ -115,6 +118,7 @@ defmodule FirstAppWeb.GameEngine do
         Logger.info("pair rearranged after winner")
         Logger.debug(inspect(new_state, pretty: true))
 
+        dispatch(state.lobby_id, :player_ready_check, state)
         new_state
     end
   end
@@ -155,5 +159,46 @@ defmodule FirstAppWeb.GameEngine do
 
   defp next_player(players_online, current_players) do
     Enum.find(players_online, fn p -> p not in current_players and not is_nil(p) end)
+  end
+
+  defp process_event(:player_ready_check, _params, state) do
+    TimerWorker.start_timer(state.lobby_id, 10, :arrange_pair_on_ready)
+    PubSub.broadcast(FirstApp.PubSub, state.topic, {:player_ready_check})
+    state
+  end
+
+  defp process_event(:player_ready, %{login: login}, state) do
+
+    game = state.game
+
+    # 1️⃣ Determine which player is being updated
+    updated_game =
+      cond do
+        game.leftPlayer && game.leftPlayer.login == login ->
+          put_in(game, [:leftPlayer, :ready], true)
+
+        game.rightPlayer && game.rightPlayer.login == login ->
+          put_in(game, [:rightPlayer, :ready], true)
+
+        true ->
+          game
+      end
+
+    # 2️⃣ Check if both are now ready
+    both_ready? =
+      updated_game.leftPlayer.ready and updated_game.rightPlayer.ready
+
+    # 3️⃣ Dispatch event if both ready
+    if both_ready? do
+      dispatch(state.lobby_id, :both_players_ready, state)
+    end
+
+    # 4️⃣ Return updated state
+    %{state | game: updated_game}
+  end
+
+  defp process_event(:both_players_ready, _params, state) do
+    TimerWorker.stop_timer(state.lobby_id)
+    state
   end
 end

@@ -1,7 +1,9 @@
 defmodule FirstAppWeb.Constants do
 
 
-  @ready_modal "ready_modal"
+  @timer_end_action_arrange_pairs_ready "timer_end_action_arrange_pairs_ready"
+  @timer_end_action_choose_winner "timer_end_action_choose_winner"
 
-  def ready_modal, do: @ready_modal
+  def timer_end_action_arrange_pairs_ready, do: @timer_end_action_arrange_pairs_ready
+  def timer_end_action_choose_winner, do: @timer_end_action_choose_winner
 end

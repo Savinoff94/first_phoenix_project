@@ -35,8 +35,7 @@ defmodule FirstAppWeb.LobbyServer do
 
   def init(lobby) do
     Logger.info("✅ Started LobbyServer for #{lobby.name} (#{lobby.id})")
-    PubSub.subscribe(FirstApp.PubSub, "timer:#{lobby.id}")
-    PubSub.subscribe(FirstApp.PubSub, "game:#{lobby.id}")
+    PubSub.subscribe(FirstApp.PubSub, "game_over:#{lobby.id}")
 
     state = %{
       host: lobby.host,

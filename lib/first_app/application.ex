@@ -16,6 +16,7 @@ defmodule FirstApp.Application do
       # Start to serve requests, typically the last entry
       {Registry, keys: :unique, name: FirstAppWeb.LobbyRegistry},
       {Registry, keys: :unique, name: FirstAppWeb.GameEngineRegistry},
+      {Registry, keys: :unique, name: FirstAppWeb.TimerRegistry},
       {FirstAppWeb.LobbySupervisor, []},
       {FirstAppWeb.Players, []},
       {FirstAppWeb.LobbiesManager, []},

@@ -38,13 +38,22 @@ defmodule FirstAppWeb.LobbyLive.Show do
       playersOnline: [],
       leftPlayer: nil,
       rightPlayer: nil,
-      gameTimer: false
+      gameTimer: false,
+      readyTimer: false,
+      tick: 0
     )}
   end
 
   def handle_event("suggest_start_game", _params, socket) do
     GameEngine.dispatch(socket.assigns.lobby_id, :suggest_start_game, %{})
     {:noreply, socket}
+  end
+  def handle_event("player_ready", _params, socket) do
+    GameEngine.dispatch(socket.assigns.lobby_id, :player_ready, %{login: socket.assigns.login})
+    {:noreply,
+    assign(socket,
+      readyTimer: false
+    )}
   end
 
   # lobby state updated
@@ -57,6 +66,7 @@ defmodule FirstAppWeb.LobbyLive.Show do
         playersOnline: state.playersOnline
     )}
   end
+
   # game state updated
   def handle_info({:game_updated, state}, socket) do
 
@@ -65,6 +75,25 @@ defmodule FirstAppWeb.LobbyLive.Show do
       leftPlayer: state.leftPlayer,
       rightPlayer: state.rightPlayer
     )}
+  end
+
+  # tick
+  def handle_info({:tick, n}, socket) do
+    {:noreply, assign(socket, tick: n)}
+  end
+
+  # open modal to check if player ready
+  def handle_info({:player_ready_check}, socket) do
+    # Do nothing, just ignore it
+    {:noreply, socket}
+  end
+
+  def handle_info({:timer_start_flag, flag, :arrange_pair_on_ready}, socket) do
+    {:noreply, assign(socket, readyTimer: flag)}
+  end
+  def handle_info({:timer_finished, _flag}, socket) do
+    # Do nothing, just ignore it
+    {:noreply, socket}
   end
 
   def render(assigns) do
@@ -161,6 +190,24 @@ defmodule FirstAppWeb.LobbyLive.Show do
             <% end %>
           </tbody>
         </table>
+      <% end %>
+
+      <%= if @readyTimer and (
+      @login == (@leftPlayer && @leftPlayer.login) or
+      @login == (@rightPlayer && @rightPlayer.login)
+      ) do %>
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-white rounded-lg shadow-lg p-6 w-80 text-center">
+            <h2 class="text-xl font-bold mb-4">Are you ready? <%= @tick %> </h2>
+
+            <button
+              phx-click="player_ready"
+              class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              OK
+            </button>
+          </div>
+        </div>
       <% end %>
     </div>
 
