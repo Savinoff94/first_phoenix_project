@@ -69,10 +69,19 @@ defmodule FirstAppWeb.GameEngine do
     if length(players_online) < 2 do
       Logger.debug("Not enough players to start game (#{length(players_online)}) — ignoring")
       state
+    else
+      Logger.info("Enough players to start game (#{length(players_online)})")
+
+      # 1️⃣ Reset winner in game state
+      new_game = Map.put(state.game, :winner, nil)
+      new_state = %{state | game: new_game}
+
+      # 2️⃣ Dispatch to arrange new pair
+      dispatch(new_state.lobby_id, :arrange_pair, %{players_online: players_online})
+
+      # 3️⃣ Return updated state
+      new_state
     end
-    Logger.info("Enough players to start game (#{length(players_online)})")
-    dispatch(state.lobby_id, :arrange_pair, %{players_online: players_online})
-    state
   end
 
   defp process_event(:arrange_pair, %{players_online: players_online}, state) do
@@ -326,18 +335,31 @@ defmodule FirstAppWeb.GameEngine do
       true ->
         winner = RPS.determine_winner(left, right)
         result = if winner, do: winner, else: "draw"
+        LobbyServer.add_score(lobby_id, winner)
 
         Logger.info("🏁 Winner determined: #{inspect(result)}")
 
+        new_game = Map.put(state.game, :winner, result)
+        new_state = %{state | game: new_game}
+
         dispatch(state.lobby_id, :finish_round, new_state)
-        PubSub.broadcast(FirstApp.PubSub, state.topic, {:winner, winner})
-        state
+        new_state
     end
   end
 
   defp process_event(:finish_round, %{lobby_id: lobby_id}, state) do
-    winner = state.game.winner
-    LobbyServer.add_score(lobby_id, winner)
-    state
+    TimerWorker.start_timer(state.lobby_id, 10, :suggest_start_game)
+
+    # Reset players' ready flags
+    new_game =
+      state.game
+      |> Map.update!(:leftPlayer, fn p ->
+        if p, do: %{p | ready: false}, else: p
+      end)
+      |> Map.update!(:rightPlayer, fn p ->
+        if p, do: %{p | ready: false}, else: p
+      end)
+
+    %{state | game: new_game}
   end
 end

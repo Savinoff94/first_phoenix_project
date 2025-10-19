@@ -77,18 +77,15 @@ defmodule FirstAppWeb.LobbyLive.Show do
       winner: state.winner
     )}
   end
-  # winner updated
-  def handle_info({:winner, winner}, socket) do
-
-    {:noreply,
-     assign(socket,
-      winner: winner
-    )}
-  end
 
   # tick
   def handle_info({:tick, n}, socket) do
     {:noreply, assign(socket, tick: n)}
+  end
+
+  def handle_info({:timer_start_flag, flag, :suggest_start_game}, socket) do
+
+    {:noreply, socket}
   end
 
   # modal where player approves that ready
@@ -117,7 +114,8 @@ defmodule FirstAppWeb.LobbyLive.Show do
 
     {:noreply, assign(
       socket,
-      winner: nil
+      winner: nil,
+      showWinnerModal: false
     )}
   end
 
