@@ -202,6 +202,7 @@ defmodule FirstAppWeb.GameEngine do
     state
   end
 
+  # rearrange pair if some of players not ready to game
   defp process_event(:arrange_pair_on_ready, %{lobby_id: lobby_id}, state) do
     players_online = FirstAppWeb.LobbyServer.get_players_online(state.lobby_id)
     game = state.game
@@ -267,5 +268,19 @@ defmodule FirstAppWeb.GameEngine do
         dispatch(state.lobby_id, :stop_engine, state)
         state
     end
+  end
+
+  defp process_event(:stop_engine, _params, state) do
+    TimerWorker.stop_timer(state.lobby_id)
+
+    new_game = %{
+      state.game
+      | leftPlayer: nil,
+        rightPlayer: nil,
+        winner: nil
+    }
+
+    Logger.info("Game stopped for lobby #{state.lobby_id}")
+    %{state | game: new_game}
   end
 end
